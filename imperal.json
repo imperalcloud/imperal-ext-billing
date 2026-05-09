@@ -1,0 +1,200 @@
+{
+  "manifest_schema_version": 3,
+  "app_id": "billing",
+  "version": "2.0.0",
+  "name": "Billing",
+  "description": "Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.",
+  "icon": "icon.svg",
+  "actions_explicit": true,
+  "capabilities": [
+    "billing:read"
+  ],
+  "tools": [
+    {
+      "name": "tool_billing_chat",
+      "description": "Billing assistant — check token balance, view spending history, subscription plans, and export transactions. All actions cost 0 tokens.",
+      "scopes": [],
+      "parameters": {
+        "message": {
+          "type": "string",
+          "required": false
+        },
+        "kwargs": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "synthetic": false
+    },
+    {
+      "name": "skeleton_refresh_billing_status",
+      "description": "Background refresh: billing status for AI context.",
+      "scopes": [],
+      "parameters": {
+        "kwargs": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "synthetic": false
+    },
+    {
+      "name": "__panel__sidebar",
+      "description": "Panel: Billing",
+      "scopes": [],
+      "parameters": {
+        "params": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "synthetic": true
+    },
+    {
+      "name": "__panel__dashboard",
+      "description": "Panel: Analytics",
+      "scopes": [],
+      "parameters": {
+        "params": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "synthetic": true
+    },
+    {
+      "name": "get_balance",
+      "description": "Get current token balance, plan name, and cap.",
+      "action_type": "read",
+      "chain_callable": false,
+      "effects": [],
+      "params_schema": {
+        "description": "No parameters needed.",
+        "properties": {},
+        "title": "EmptyParams",
+        "type": "object"
+      },
+      "return_schema": {},
+      "event": "",
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    },
+    {
+      "name": "get_plan",
+      "description": "Get subscription details: plan, status, billing period.",
+      "action_type": "read",
+      "chain_callable": false,
+      "effects": [],
+      "params_schema": {
+        "description": "No parameters needed.",
+        "properties": {},
+        "title": "EmptyParams",
+        "type": "object"
+      },
+      "return_schema": {},
+      "event": "",
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    },
+    {
+      "name": "spending_report",
+      "description": "Show usage and spending breakdown by meter.",
+      "action_type": "read",
+      "chain_callable": false,
+      "effects": [],
+      "params_schema": {
+        "description": "No parameters needed.",
+        "properties": {},
+        "title": "EmptyParams",
+        "type": "object"
+      },
+      "return_schema": {},
+      "event": "",
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    },
+    {
+      "name": "export_csv",
+      "description": "Export transaction history as CSV.",
+      "action_type": "read",
+      "chain_callable": false,
+      "effects": [],
+      "params_schema": {
+        "description": "Parameters for CSV export.",
+        "properties": {
+          "period": {
+            "default": "all",
+            "description": "Time period: today, 7d, 30d, all",
+            "title": "Period",
+            "type": "string"
+          },
+          "app_id": {
+            "default": "",
+            "description": "Filter by extension (optional)",
+            "title": "App Id",
+            "type": "string"
+          },
+          "tx_type": {
+            "default": "",
+            "description": "Filter by type: deduct, credit (optional)",
+            "title": "Tx Type",
+            "type": "string"
+          }
+        },
+        "title": "ExportCsvParams",
+        "type": "object"
+      },
+      "return_schema": {},
+      "event": "",
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    },
+    {
+      "name": "topup_status",
+      "description": "Check status of recent top-up payments.",
+      "action_type": "read",
+      "chain_callable": false,
+      "effects": [],
+      "params_schema": {
+        "properties": {},
+        "title": "EmptyParams",
+        "type": "object"
+      },
+      "return_schema": {},
+      "event": "",
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    },
+    {
+      "name": "list_payment_methods",
+      "description": "List saved payment methods (credit cards).",
+      "action_type": "read",
+      "chain_callable": false,
+      "effects": [],
+      "params_schema": {
+        "properties": {},
+        "title": "EmptyParams",
+        "type": "object"
+      },
+      "return_schema": {},
+      "event": "",
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    }
+  ],
+  "signals": [],
+  "schedules": [],
+  "required_scopes": [],
+  "icon_size_bytes": 321,
+  "lifecycle": {
+    "on_install": true,
+    "health_check": {
+      "interval_sec": 60
+    }
+  },
+  "lifecycle_hooks": {
+    "on_install": {
+      "signature": "(ctx)"
+    }
+  }
+}
