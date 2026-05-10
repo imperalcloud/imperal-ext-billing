@@ -126,4 +126,9 @@ async def billing_sidebar(ctx, period: str = "7d", **kwargs):
             children=[ui.List(items=ext_items)],
         ))
 
-    return ui.Stack(children=children, gap=2, className="min-h-full")
+    # Auto-trigger center overlay (Analytics dashboard) on first sidebar mount.
+    # Frontend's isCenterOverlay reads center_overlay=True from unified_config
+    # and routes __panel__dashboard to setCenterOverlay → chat shifts to right.
+    root = ui.Stack(children=children, gap=2, className="min-h-full")
+    root.props["auto_action"] = ui.Call("__panel__dashboard")
+    return root

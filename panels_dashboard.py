@@ -34,7 +34,8 @@ log = logging.getLogger("billing")
 # ─── Right Panel (main router) ────────────────────────────────────────── #
 
 @ext.panel(
-    "dashboard", slot="right", title="Analytics", icon="BarChart3",
+    "dashboard", slot="center", title="Analytics", icon="BarChart3",
+    center_overlay=True,  # federal v4.1.8 — chat shifts to 380px right rail
     refresh="on_event:billing.deduct,billing.credit",
 )
 async def billing_dashboard(
