@@ -1,11 +1,13 @@
 {
   "manifest_schema_version": 3,
+  "sdk_version": "4.2.10",
   "app_id": "billing",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "name": "Billing",
   "description": "Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.",
   "icon": "icon.svg",
   "actions_explicit": true,
+  "system": false,
   "capabilities": [
     "billing:read"
   ],
@@ -23,8 +25,7 @@
           "type": "string",
           "required": true
         }
-      },
-      "synthetic": false
+      }
     },
     {
       "name": "skeleton_refresh_billing_status",
@@ -35,39 +36,15 @@
           "type": "string",
           "required": true
         }
-      },
-      "synthetic": false
-    },
-    {
-      "name": "__panel__sidebar",
-      "description": "Panel: Billing",
-      "scopes": [],
-      "parameters": {
-        "params": {
-          "type": "string",
-          "required": true
-        }
-      },
-      "synthetic": true
-    },
-    {
-      "name": "__panel__dashboard",
-      "description": "Panel: Analytics",
-      "scopes": [],
-      "parameters": {
-        "params": {
-          "type": "string",
-          "required": true
-        }
-      },
-      "synthetic": true
+      }
     },
     {
       "name": "get_balance",
       "description": "Get current token balance, plan name, and cap.",
       "action_type": "read",
-      "chain_callable": false,
+      "chain_callable": true,
       "effects": [],
+      "id_projection": "",
       "params_schema": {
         "description": "No parameters needed.",
         "properties": {},
@@ -83,8 +60,9 @@
       "name": "get_plan",
       "description": "Get subscription details: plan, status, billing period.",
       "action_type": "read",
-      "chain_callable": false,
+      "chain_callable": true,
       "effects": [],
+      "id_projection": "",
       "params_schema": {
         "description": "No parameters needed.",
         "properties": {},
@@ -100,8 +78,9 @@
       "name": "spending_report",
       "description": "Show usage and spending breakdown by meter.",
       "action_type": "read",
-      "chain_callable": false,
+      "chain_callable": true,
       "effects": [],
+      "id_projection": "",
       "params_schema": {
         "description": "No parameters needed.",
         "properties": {},
@@ -117,8 +96,9 @@
       "name": "export_csv",
       "description": "Export transaction history as CSV.",
       "action_type": "read",
-      "chain_callable": false,
+      "chain_callable": true,
       "effects": [],
+      "id_projection": "",
       "params_schema": {
         "description": "Parameters for CSV export.",
         "properties": {
@@ -153,8 +133,9 @@
       "name": "topup_status",
       "description": "Check status of recent top-up payments.",
       "action_type": "read",
-      "chain_callable": false,
+      "chain_callable": true,
       "effects": [],
+      "id_projection": "",
       "params_schema": {
         "properties": {},
         "title": "EmptyParams",
@@ -169,8 +150,9 @@
       "name": "list_payment_methods",
       "description": "List saved payment methods (credit cards).",
       "action_type": "read",
-      "chain_callable": false,
+      "chain_callable": true,
       "effects": [],
+      "id_projection": "",
       "params_schema": {
         "properties": {},
         "title": "EmptyParams",
@@ -185,7 +167,7 @@
   "signals": [],
   "schedules": [],
   "required_scopes": [],
-  "icon_size_bytes": 321,
+  "icon_size_bytes": 407,
   "lifecycle": {
     "on_install": true,
     "health_check": {
