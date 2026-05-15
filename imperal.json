@@ -1,8 +1,8 @@
 {
   "manifest_schema_version": 3,
-  "sdk_version": "4.2.10",
+  "sdk_version": "5.0.0",
   "app_id": "billing",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "name": "Billing",
   "description": "Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.",
   "icon": "icon.svg",
@@ -12,21 +12,6 @@
     "billing:read"
   ],
   "tools": [
-    {
-      "name": "tool_billing_chat",
-      "description": "Billing assistant — check token balance, view spending history, subscription plans, and export transactions. All actions cost 0 tokens.",
-      "scopes": [],
-      "parameters": {
-        "message": {
-          "type": "string",
-          "required": false
-        },
-        "kwargs": {
-          "type": "string",
-          "required": true
-        }
-      }
-    },
     {
       "name": "skeleton_refresh_billing_status",
       "description": "Background refresh: billing status for AI context.",
@@ -53,6 +38,8 @@
       },
       "return_schema": {},
       "event": "",
+      "background": false,
+      "long_running": false,
       "scopes": [],
       "owner_chat_tool": "tool_billing_chat"
     },
@@ -71,6 +58,8 @@
       },
       "return_schema": {},
       "event": "",
+      "background": false,
+      "long_running": false,
       "scopes": [],
       "owner_chat_tool": "tool_billing_chat"
     },
@@ -89,6 +78,8 @@
       },
       "return_schema": {},
       "event": "",
+      "background": false,
+      "long_running": false,
       "scopes": [],
       "owner_chat_tool": "tool_billing_chat"
     },
@@ -126,6 +117,8 @@
       },
       "return_schema": {},
       "event": "",
+      "background": false,
+      "long_running": false,
       "scopes": [],
       "owner_chat_tool": "tool_billing_chat"
     },
@@ -143,6 +136,8 @@
       },
       "return_schema": {},
       "event": "",
+      "background": false,
+      "long_running": false,
       "scopes": [],
       "owner_chat_tool": "tool_billing_chat"
     },
@@ -160,6 +155,8 @@
       },
       "return_schema": {},
       "event": "",
+      "background": false,
+      "long_running": false,
       "scopes": [],
       "owner_chat_tool": "tool_billing_chat"
     }
