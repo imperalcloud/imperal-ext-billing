@@ -15,7 +15,7 @@ log = logging.getLogger("billing")
 
 # ─── Extension ────────────────────────────────────────────────────────── #
 
-ext = Extension("billing", version="2.2.0", capabilities=["billing:read"],
+ext = Extension("billing", version="2.2.1", capabilities=["billing:read"],
     display_name='Billing',
     description=(
         'Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.'
@@ -25,8 +25,8 @@ ext = Extension("billing", version="2.2.0", capabilities=["billing:read"],
 )
 
 chat = ChatExtension(
-    ext=ext,
-    tool_name="tool_billing_chat",
+    ext,
+    "tool_billing_chat",
     description=(
         "Billing assistant — check token balance, view spending history, "
         "subscription plans, and export transactions. All actions cost 0 tokens."
