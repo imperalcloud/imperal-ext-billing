@@ -7,6 +7,7 @@ import io
 from pydantic import BaseModel, Field
 
 from app import chat, ActionResult, _user_id
+from models import WalletBalance, PlanSubscription
 import queries
 
 
@@ -30,16 +31,17 @@ class ExportCsvParams(BaseModel):
     "get_balance",
     action_type="read",
     description="Get current token balance, plan name, and cap.",
+    data_model=WalletBalance,
 )
 async def fn_get_balance(ctx, params: EmptyParams) -> ActionResult:
     try:
         info = await ctx.billing.get_balance()
         return ActionResult.success(
-            data={
-                "balance": info.balance,
-                "plan": info.plan,
-                "cap": info.cap,
-            },
+            data=WalletBalance(
+                balance=info.balance,
+                plan=info.plan,
+                cap=info.cap,
+            ),
             summary=(
                 f"Balance: {info.balance:,} tokens on the {info.plan} plan "
                 f"(cap: {info.cap:,})"
@@ -53,17 +55,18 @@ async def fn_get_balance(ctx, params: EmptyParams) -> ActionResult:
     "get_plan",
     action_type="read",
     description="Get subscription details: plan, status, billing period.",
+    data_model=PlanSubscription,
 )
 async def fn_get_plan(ctx, params: EmptyParams) -> ActionResult:
     try:
         sub = await ctx.billing.get_subscription()
         return ActionResult.success(
-            data={
-                "plan": sub.plan,
-                "status": sub.status,
-                "started_at": sub.started_at,
-                "expires_at": sub.expires_at,
-            },
+            data=PlanSubscription(
+                plan=sub.plan,
+                status=sub.status,
+                started_at=sub.started_at,
+                expires_at=sub.expires_at,
+            ),
             summary=f"Plan: {sub.plan} ({sub.status})",
         )
     except Exception as e:
