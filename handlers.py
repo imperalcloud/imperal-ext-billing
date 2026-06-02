@@ -7,7 +7,9 @@ import io
 from pydantic import BaseModel, Field
 
 from app import chat, ActionResult, _user_id
-from models import WalletBalance, PlanSubscription
+from models import (
+    WalletBalance, PlanSubscription, MeterUsage, SpendingReport, CsvExport,
+)
 import queries
 
 
@@ -77,6 +79,7 @@ async def fn_get_plan(ctx, params: EmptyParams) -> ActionResult:
     "spending_report",
     action_type="read",
     description="Show usage and spending breakdown by meter.",
+    data_model=SpendingReport,
 )
 async def fn_spending_report(ctx, params: EmptyParams) -> ActionResult:
     try:
@@ -88,13 +91,24 @@ async def fn_spending_report(ctx, params: EmptyParams) -> ActionResult:
         exceeded_text = (
             f" | Exceeded: {', '.join(limits.exceeded)}" if limits.exceeded else ""
         )
+        # SDL: one MeterUsage item per meter (entity-list), plan/exceeded as
+        # list-level scalars. NO legacy {usage{},limits{}} wrapper.
+        items = [
+            {
+                "meter": meter,
+                "count": count,
+                "limit": limits.limits.get(meter),
+                "exceeded": meter in limits.exceeded,
+            }
+            for meter, count in limits.usage.items()
+        ]
         return ActionResult.success(
-            data={
-                "plan": limits.plan,
-                "usage": limits.usage,
-                "limits": limits.limits,
-                "exceeded": limits.exceeded,
-            },
+            data=SpendingReport(
+                items=[MeterUsage(**it) for it in items],
+                total=len(items),
+                plan=limits.plan,
+                exceeded=limits.exceeded,
+            ),
             summary=f"Plan: {limits.plan}{exceeded_text}\nUsage:\n{usage_text}",
         )
     except Exception as e:
@@ -107,6 +121,7 @@ async def fn_spending_report(ctx, params: EmptyParams) -> ActionResult:
     "export_csv",
     action_type="read",
     description="Export transaction history as CSV.",
+    data_model=CsvExport,
 )
 async def fn_export_csv(ctx, params: ExportCsvParams) -> ActionResult:
     try:
@@ -137,11 +152,11 @@ async def fn_export_csv(ctx, params: ExportCsvParams) -> ActionResult:
         count = len(result["transactions"])
 
         return ActionResult.success(
-            data={
-                "csv": csv_str,
-                "filename": f"billing-export-{params.period}.csv",
-                "count": count,
-            },
+            data=CsvExport(
+                csv=csv_str,
+                filename=f"billing-export-{params.period}.csv",
+                count=count,
+            ),
             summary=f"Exported {count} transactions ({params.period})",
         )
     except Exception as e:
