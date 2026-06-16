@@ -132,3 +132,83 @@ class TokenPurchaseOutcome(sdl.Entity):
             data.setdefault("id", "topup")
             data.setdefault("title", f"Top-up {data.get('tokens') or ''} tokens")
         return data
+
+
+class PlanEntity(sdl.Entity):
+    """One available plan (GET /v1/billing/plans). Mirrors PlanResponse(id,name,price,interval,features,limits)."""
+    price: Optional[float] = None
+    interval: Optional[str] = None
+    features: Optional[dict] = None
+    limits: Optional[dict] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sdl_canon(cls, data):
+        if isinstance(data, dict):
+            data.setdefault("id", data.get("id") or data.get("name") or "")
+            data.setdefault("title", (data.get("name") or data.get("id") or "").title())
+        return data
+
+
+class PlanList(sdl.EntityList[PlanEntity]):
+    pass
+
+
+class AutoTopupSettingsEntity(sdl.Entity):
+    """Auto-top-up settings. Mirrors AutoTopUpSettings(enabled,threshold_pct,recharge_tokens,recharge_cents,payment_method_id)."""
+    enabled: Optional[bool] = None
+    threshold_pct: Optional[int] = None
+    recharge_tokens: Optional[int] = None
+    recharge_cents: Optional[int] = None
+    payment_method_id: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sdl_canon(cls, data):
+        if isinstance(data, dict):
+            data.setdefault("id", "auto_topup")
+            data.setdefault("title", "Auto top-up " + ("on" if data.get("enabled") else "off"))
+        return data
+
+
+class CancelOutcome(sdl.Entity):
+    """Result of cancel_subscription."""
+    plan: Optional[str] = None
+    status: Optional[str] = None
+    effective_at: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sdl_canon(cls, data):
+        if isinstance(data, dict):
+            data.setdefault("id", "subscription")
+            data.setdefault("title", "Subscription cancellation scheduled")
+        return data
+
+
+class BillingProfileUpdated(sdl.Entity):
+    """Result of update_billing_profile."""
+    name: Optional[str] = None
+    company: Optional[str] = None
+    vat: Optional[str] = None
+    country: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sdl_canon(cls, data):
+        if isinstance(data, dict):
+            data.setdefault("id", "billing_profile")
+            data.setdefault("title", "Billing profile updated")
+        return data
+
+
+class PortalLink(sdl.Entity):
+    """A Stripe Customer Portal link (open_billing_portal)."""
+    @model_validator(mode="before")
+    @classmethod
+    def _sdl_canon(cls, data):
+        if isinstance(data, dict):
+            data.setdefault("id", "billing_portal")
+            data.setdefault("title", "Manage cards & invoices")
+            # `url` is a core sdl.Entity field — Webbee surfaces it as the link.
+        return data

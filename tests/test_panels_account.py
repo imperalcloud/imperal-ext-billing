@@ -63,3 +63,36 @@ async def test_tokens_section_shows_progress():
 async def test_payment_methods_has_portal_button():
     flat = _flat(await pa.build_payment_methods_section(make_ctx(billing=StubBilling(cards=[]))))
     assert "billing.stripe.com" in flat   # ui.Open(url=portal_url) wired in (StubBilling portal_url)
+
+
+@pytest.mark.asyncio
+async def test_subscription_section_has_cancel_button_for_active_paid():
+    # default StubBilling subscription = pro/active → Cancel plan button present.
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=StubBilling()), catalog=[]))
+    assert "cancel_subscription" in flat
+
+
+@pytest.mark.asyncio
+async def test_subscription_section_no_cancel_for_free_plan():
+    from imperal_sdk.billing.client import SubscriptionInfo
+    b = StubBilling(subscription=SubscriptionInfo(plan="free", status="active",
+                                                  started_at="", expires_at=""))
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=[]))
+    assert "cancel_subscription" not in flat
+
+
+@pytest.mark.asyncio
+async def test_tokens_section_has_auto_topup_form():
+    flat = _flat(await pa.build_tokens_section(make_ctx(billing=StubBilling())))
+    assert "set_auto_topup" in flat
+    assert "Auto top-up" in flat
+
+
+@pytest.mark.asyncio
+async def test_profile_section_is_editable_form():
+    nodes = await pa.build_profile_section(
+        make_ctx(billing=StubBilling(), attributes={"billing": {"company": "Imperal Inc", "vat": "EE123"}}))
+    flat = _flat(nodes)
+    assert "update_billing_profile" in flat
+    assert "Form" in _types(nodes)
+    assert "Imperal Inc" in flat

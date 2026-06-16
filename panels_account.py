@@ -44,6 +44,10 @@ async def build_subscription_section(ctx, catalog=None):
             btns.append(ui.Button(label=f"Downgrade to {pid.title()}", icon="ArrowDownCircle",
                                   variant="secondary", size="sm",
                                   on_click=ui.Call("downgrade_plan", plan_id=pid, period="monthly")))
+    # Cancel plan (destructive; confirm gate auto-fires) — only for an active PAID plan.
+    if sub.status == "active" and (sub.plan or "").lower() not in ("free", "unknown"):
+        btns.append(ui.Button("Cancel plan", icon="XCircle", variant="danger", size="sm",
+                              on_click=ui.Call("cancel_subscription")))
     if btns:
         children.append(ui.Stack(direction="h", gap=1, children=btns))
     return [ui.Card(title="Subscription", content=ui.Stack(direction="v", gap=2, children=children))]
@@ -108,6 +112,23 @@ async def build_tokens_section(ctx):
             {"value": "50000", "label": "50,000 ($50)"},
         ])],
         action="buy_tokens", submit_label="Buy tokens"))
+    # Auto-top-up: current state + a save form (set_auto_topup is write; confirm gate auto-fires).
+    at = await ctx.billing.get_auto_topup()  # AutoTopupSettings; safe-degrades to disabled defaults
+    children.append(ui.Badge("Auto top-up on" if at.enabled else "Auto top-up off",
+                             color="green" if at.enabled else "gray"))
+    children.append(ui.Form(
+        children=[
+            ui.Toggle(param_name="enabled", label="Auto top-up", value=bool(at.enabled)),
+            ui.Select(param_name="recharge_tokens", options=[
+                {"value": "20000", "label": "20,000"},
+                {"value": "50000", "label": "50,000"},
+            ]),
+            ui.Select(param_name="threshold_pct", options=[
+                {"value": "10", "label": "10%"},
+                {"value": "20", "label": "20%"},
+            ]),
+        ],
+        action="set_auto_topup", submit_label="Save auto top-up"))
     return [ui.Card(title="Tokens", content=ui.Stack(direction="v", gap=2, children=children))]
 
 
@@ -126,11 +147,13 @@ async def build_history_section(ctx):
 
 
 async def build_profile_section(ctx):
+    # Editable billing/VAT profile (update_billing_profile is write; confirm gate auto-fires).
     prof = ad.read_billing_profile(ctx)
-    return [ui.Card(title="Billing profile", content=ui.KeyValue(items=[
-        {"key": "Name", "value": prof["name"] or "—"},
-        {"key": "Company", "value": prof["company"] or "—"},
-        {"key": "VAT / GST", "value": prof["vat"] or "—"},
-        {"key": "Country", "value": prof["country"] or "—"},
-    ]))]
-    # Phase 2 adds an editable ui.Form(action="update_billing_profile", …).
+    return [ui.Card(title="Billing profile", content=ui.Form(
+        children=[
+            ui.Input(param_name="name", placeholder="Name", value=prof["name"]),
+            ui.Input(param_name="company", placeholder="Company", value=prof["company"]),
+            ui.Input(param_name="vat", placeholder="VAT / GST", value=prof["vat"]),
+            ui.Input(param_name="country", placeholder="Country", value=prof["country"]),
+        ],
+        action="update_billing_profile", submit_label="Save"))]
