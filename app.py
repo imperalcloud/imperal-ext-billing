@@ -15,7 +15,7 @@ log = logging.getLogger("billing")
 
 # ─── Extension ────────────────────────────────────────────────────────── #
 
-ext = Extension("billing", version="2.4.0", capabilities=["billing:read", "billing:write"],
+ext = Extension("billing", version="2.4.1", capabilities=["billing:read", "billing:write"],
     display_name='Billing',
     description=(
         'Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.'

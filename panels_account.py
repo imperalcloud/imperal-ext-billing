@@ -10,7 +10,11 @@ import account_data as ad
 
 log = logging.getLogger("ext.billing.panels_account")
 
-_PLAN_ORDER = {"free": 0, "starter": 1, "pro": 2, "business": 3, "enterprise": 4}
+# Self-service plan changes are restricted to Pro and Business. Free is reached
+# only by cancelling (period-end revert), and Enterprise is contract-only — so
+# neither appears in the plan-change dropdown. Keep this in sync with the
+# name-based guard in handlers_money._change_plan.
+_SELF_SERVICE_PLANS = ("pro", "business")
 
 
 def _is_expired(expires_at) -> bool:
@@ -56,12 +60,16 @@ async def build_subscription_section(ctx, catalog=None):
     # The gateway decides upgrade-vs-downgrade by price. Option value = the catalog
     # `id` (a UUID, which change_plan resolves by Plan.id); label = plan name + price.
     cat = catalog if catalog is not None else await ad.fetch_plan_catalog(ctx)
+    selectable = sorted(
+        (p for p in cat
+         if (p.get("name") or "").lower() in _SELF_SERVICE_PLANS
+         and (p.get("name") or "").lower() != (sub.plan or "").lower()),
+        key=lambda p: p.get("price") or 0,
+    )
     plan_options = [
         {"value": p.get("id") or p.get("name"),
          "label": f"{(p.get('name') or '').title()} — ${p.get('price')}/mo"}
-        for p in cat
-        if (p.get("name") or "").lower() in _PLAN_ORDER
-        and (p.get("name") or "").lower() != (sub.plan or "").lower()
+        for p in selectable
     ]
     if plan_options:
         children.append(ui.Form(

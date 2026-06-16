@@ -48,6 +48,36 @@ async def test_change_plan_unified_tool_surfaces_error():
     assert res.status == "error" and "payment method" in (res.error or "").lower()
 
 @pytest.mark.asyncio
+async def test_change_plan_to_free_is_blocked_before_gateway():
+    # Free is not a self-service target — guard rejects it and the gateway is never called.
+    b = StubBilling()
+    res = await hm.fn_change_plan(make_ctx(billing=b), _P(plan_id="free", period="monthly"))
+    assert res.status == "error" and "cancel" in (res.error or "").lower()
+    assert not any(c[0] == "change_plan" for c in b.calls)   # never reached the gateway
+
+@pytest.mark.asyncio
+async def test_change_plan_to_enterprise_is_blocked_before_gateway():
+    b = StubBilling()
+    res = await hm.fn_downgrade_plan(make_ctx(billing=b), _P(plan_id="Enterprise", period="monthly"))
+    assert res.status == "error" and "agreement" in (res.error or "").lower()
+    assert not any(c[0] == "change_plan" for c in b.calls)
+
+@pytest.mark.asyncio
+async def test_change_plan_to_unknown_named_plan_is_blocked():
+    b = StubBilling()
+    res = await hm.fn_change_plan(make_ctx(billing=b), _P(plan_id="starter", period="monthly"))
+    assert res.status == "error" and "self-service" in (res.error or "").lower()
+    assert not any(c[0] == "change_plan" for c in b.calls)
+
+@pytest.mark.asyncio
+async def test_change_plan_pro_by_name_passes_guard():
+    # Pro is self-service → guard lets it through to the gateway.
+    b = StubBilling(change_plan_result=ChangePlanResult(action="upgrade", plan="pro", succeeded=True))
+    res = await hm.fn_change_plan(make_ctx(billing=b), _P(plan_id="pro", period="monthly"))
+    assert res.status == "success"
+    assert ("change_plan", "pro", "monthly") in b.calls
+
+@pytest.mark.asyncio
 async def test_downgrade_plan_pending():
     b = StubBilling(change_plan_result=ChangePlanResult(action="downgrade", plan="pro", pending=True, effective_at="2026-07-15T00:00:00"))
     res = await hm.fn_downgrade_plan(make_ctx(billing=b), _P(plan_id="pro", period="monthly"))

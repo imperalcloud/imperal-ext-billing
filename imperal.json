@@ -2,7 +2,7 @@
   "manifest_schema_version": 3,
   "sdk_version": "5.4.1",
   "app_id": "billing",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "name": "Billing",
   "description": "Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.",
   "icon": "icon.svg",
@@ -1364,7 +1364,7 @@
     },
     {
       "name": "change_plan",
-      "description": "Change the user's subscription to a different plan — the system charges a prorated upgrade immediately or schedules a downgrade for period-end automatically. Confirmation gate fires first.",
+      "description": "Change the user's subscription to a different plan. Only Pro and Business are self-service (Free is reached by cancelling; Enterprise is by contract). The system charges a prorated upgrade immediately or schedules a downgrade for period-end automatically. Confirmation gate fires first.",
       "action_type": "write",
       "chain_callable": true,
       "effects": [
@@ -1551,7 +1551,7 @@
     },
     {
       "name": "upgrade_plan",
-      "description": "Upgrade the user's subscription to a higher plan. The prorated difference is charged immediately to the saved default card. Confirmation gate fires automatically; the user must confirm first.",
+      "description": "Upgrade the user's subscription to a higher plan (Pro or Business — Enterprise is by contract). The prorated difference is charged immediately to the saved default card. Confirmation gate fires automatically; the user must confirm first.",
       "action_type": "write",
       "chain_callable": true,
       "effects": [
@@ -1738,7 +1738,7 @@
     },
     {
       "name": "downgrade_plan",
-      "description": "Schedule a downgrade to a lower plan, effective at the end of the current period (no charge now; the user keeps what they paid for). Confirmation gate fires automatically; the user must confirm first.",
+      "description": "Schedule a downgrade to a lower paid plan (Pro), effective at the end of the current period (no charge now; the user keeps what they paid for). To drop to Free, cancel the plan instead. Confirmation gate fires automatically; the user must confirm first.",
       "action_type": "write",
       "chain_callable": true,
       "effects": [

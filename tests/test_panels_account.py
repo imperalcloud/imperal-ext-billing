@@ -132,24 +132,46 @@ async def test_profile_section_is_editable_form():
 
 @pytest.mark.asyncio
 async def test_subscription_plan_change_is_dropdown_using_plan_id_not_name():
-    # ONE plan-change control: a Select of the OTHER plans inside a Form that
-    # submits to `change_plan`. Option value MUST be the UUID `id`, label uses
-    # the plan name + price. The current plan (pro) is excluded.
+    # ONE plan-change control: a Select of the OTHER self-service plans inside a
+    # Form that submits to `change_plan`. Option value MUST be the UUID `id`,
+    # label uses the plan name + price. Only Pro and Business are self-service —
+    # Free (cancel-only), Enterprise (contract-only) and the current plan (pro)
+    # are all excluded.
     cat = [
         {"id": "uuid-free", "name": "free", "price": 0},
         {"id": "uuid-pro", "name": "pro", "price": 29},
         {"id": "uuid-business", "name": "business", "price": 79},
+        {"id": "uuid-ent", "name": "enterprise", "price": 0},
     ]
     nodes = await pa.build_subscription_section(make_ctx(billing=StubBilling()), catalog=cat)
     flat = _flat(nodes)
     types = _types(nodes)
     assert "Form" in types and "Select" in types               # single dropdown control
     assert "change_plan" in flat                               # form submits to ONE tool
-    assert "uuid-business" in flat and "uuid-free" in flat      # option values = UUID id
+    assert "uuid-business" in flat                             # Business is offered (option value = UUID id)
     assert "uuid-pro" not in flat                              # current plan excluded
+    assert "uuid-free" not in flat                             # Free is NOT a self-service target
+    assert "uuid-ent" not in flat                              # Enterprise is contract-only
     assert "Business" in flat and "$79/mo" in flat            # label by name + price
     # The per-plan upgrade/downgrade button loop is gone.
     assert "upgrade_plan" not in flat and "downgrade_plan" not in flat
+
+
+@pytest.mark.asyncio
+async def test_subscription_dropdown_offers_pro_when_on_business():
+    # On Business → only Pro (the other self-service plan) is offered; ordered by price.
+    from imperal_sdk.billing.client import SubscriptionInfo
+    cat = [
+        {"id": "uuid-pro", "name": "pro", "price": 29},
+        {"id": "uuid-business", "name": "business", "price": 79},
+        {"id": "uuid-ent", "name": "enterprise", "price": 0},
+    ]
+    b = StubBilling(subscription=SubscriptionInfo(plan="business", status="active",
+                                                  started_at="", expires_at="2099-01-01T00:00:00"))
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=cat))
+    assert "uuid-pro" in flat
+    assert "uuid-business" not in flat   # current plan excluded
+    assert "uuid-ent" not in flat
 
 
 @pytest.mark.asyncio

@@ -16,6 +16,31 @@ from models_account import (
 
 log = logging.getLogger("ext.billing.money")
 
+# Self-service plan changes are limited to Pro and Business. Free is reached only
+# by cancelling (the plan reverts at period-end); Enterprise is contract-only.
+# Mirrors the dropdown filter in panels_account._SELF_SERVICE_PLANS.
+_SELF_SERVICE_PLANS = ("pro", "business")
+
+
+def _blocked_plan_error(plan_id: str):
+    """Return an ActionResult.error if `plan_id` is a NAMED plan that isn't
+    self-service (free/enterprise/etc.); else None. Catalog UUIDs (which contain
+    '-') pass through — the panel only ever sends Pro/Business ids, and the
+    gateway is the final authority on those."""
+    key = (plan_id or "").strip().lower()
+    if not key or "-" in key or key in _SELF_SERVICE_PLANS:
+        return None
+    if key == "free":
+        return ActionResult.error(
+            "Downgrading to the Free plan isn't available here. To stop paying, "
+            "cancel your plan — it stays active until the end of the period, then "
+            "reverts to Free automatically.")
+    if key == "enterprise":
+        return ActionResult.error(
+            "Enterprise is by agreement only — contact us and we'll set it up for you.")
+    return ActionResult.error(
+        f"Only Pro and Business can be switched to here — '{plan_id}' isn't a self-service plan.")
+
 
 class ChangePlanParams(BaseModel):
     plan_id: str = Field(description="Target plan id (e.g. 'pro', 'business').")
@@ -38,6 +63,9 @@ def _detail(e: httpx.HTTPStatusError) -> str:
 
 
 async def _change_plan(ctx, plan_id: str, period: str) -> ActionResult:
+    blocked = _blocked_plan_error(plan_id)
+    if blocked is not None:
+        return blocked
     try:
         r = await ctx.billing.change_plan(plan_id, period)
     except httpx.HTTPStatusError as e:
@@ -64,9 +92,10 @@ async def _change_plan(ctx, plan_id: str, period: str) -> ActionResult:
     effects=["update:subscription"],
     event="billing.plan_changed",
     data_model=ChangePlanOutcome,
-    description=("Change the user's subscription to a different plan — the system charges "
-                 "a prorated upgrade immediately or schedules a downgrade for period-end "
-                 "automatically. Confirmation gate fires first."),
+    description=("Change the user's subscription to a different plan. Only Pro and Business "
+                 "are self-service (Free is reached by cancelling; Enterprise is by contract). "
+                 "The system charges a prorated upgrade immediately or schedules a downgrade "
+                 "for period-end automatically. Confirmation gate fires first."),
 )
 async def fn_change_plan(ctx, params: ChangePlanParams) -> ActionResult:
     return await _change_plan(ctx, params.plan_id, params.period)
@@ -78,9 +107,10 @@ async def fn_change_plan(ctx, params: ChangePlanParams) -> ActionResult:
     effects=["update:subscription"],
     event="billing.plan_changed",
     data_model=ChangePlanOutcome,
-    description=("Upgrade the user's subscription to a higher plan. The prorated "
-                 "difference is charged immediately to the saved default card. "
-                 "Confirmation gate fires automatically; the user must confirm first."),
+    description=("Upgrade the user's subscription to a higher plan (Pro or Business — "
+                 "Enterprise is by contract). The prorated difference is charged immediately "
+                 "to the saved default card. Confirmation gate fires automatically; the user "
+                 "must confirm first."),
 )
 async def fn_upgrade_plan(ctx, params: ChangePlanParams) -> ActionResult:
     return await _change_plan(ctx, params.plan_id, params.period)
@@ -92,9 +122,10 @@ async def fn_upgrade_plan(ctx, params: ChangePlanParams) -> ActionResult:
     effects=["update:subscription"],
     event="billing.plan_changed",
     data_model=ChangePlanOutcome,
-    description=("Schedule a downgrade to a lower plan, effective at the end of the "
-                 "current period (no charge now; the user keeps what they paid for). "
-                 "Confirmation gate fires automatically; the user must confirm first."),
+    description=("Schedule a downgrade to a lower paid plan (Pro), effective at the end of "
+                 "the current period (no charge now; the user keeps what they paid for). To "
+                 "drop to Free, cancel the plan instead. Confirmation gate fires automatically; "
+                 "the user must confirm first."),
 )
 async def fn_downgrade_plan(ctx, params: ChangePlanParams) -> ActionResult:
     return await _change_plan(ctx, params.plan_id, params.period)
