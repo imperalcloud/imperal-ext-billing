@@ -9,6 +9,9 @@ import pytest
 
 # Make the ext modules importable (they use bare `import app`, `from app import …`)
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+# Make `conftest` importable by name from test modules (`from conftest import …`)
+# even though tests/ is a package (tests/__init__.py) under pytest's prepend mode.
+sys.path.insert(0, os.path.dirname(__file__))
 
 from imperal_sdk.types.models import (  # the LIVE return dataclasses
     PaymentMethod, PaymentRecord, ChangePlanResult, TopupResult,
