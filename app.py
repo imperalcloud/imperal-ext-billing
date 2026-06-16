@@ -15,7 +15,7 @@ log = logging.getLogger("billing")
 
 # ─── Extension ────────────────────────────────────────────────────────── #
 
-ext = Extension("billing", version="2.3.0", capabilities=["billing:read"],
+ext = Extension("billing", version="2.4.0", capabilities=["billing:read", "billing:write"],
     display_name='Billing',
     description=(
         'Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.'
@@ -32,17 +32,19 @@ chat = ChatExtension(
         "subscription plans, and export transactions. All actions cost 0 tokens."
     ),
     system_prompt=(
-        "Billing module — manage wallet, token balance, plans, and spending analytics.\n\n"
-        "The user can see their billing dashboard with:\n"
-        "- Left panel: wallet balance, plan, quick stats, extension breakdown\n"
-        "- Right panel: analytics tabs (Overview, Transactions, Pricing), "
-        "account summary, transaction details, extension stats\n\n"
-        "Available actions:\n"
-        "- export_csv: Export transaction history as CSV\n"
-        "- get_balance: Check current balance\n"
-        "- get_plan: Check subscription details\n"
-        "- spending_report: Detailed spending breakdown\n\n"
-        "Coming soon: Top up tokens, Change/upgrade plan."
+        "Billing module — the user's account, subscription, saved cards, "
+        "token balance, payment history, and spending analytics.\n\n"
+        "You can show the user's plan, balance, saved cards, and payment "
+        "history; upgrade or downgrade their plan; and remove a saved card or "
+        "set a different card as the default.\n\n"
+        "Money and destructive actions (upgrade_plan, downgrade_plan, "
+        "set_default_payment_method, remove_payment_method) require the user to "
+        "confirm — the system handles the confirmation prompt automatically, so "
+        "do not invent your own confirmation step.\n\n"
+        "Read tools (no confirmation): get_balance, get_plan, "
+        "list_payment_methods, list_payments, spending_report, topup_status, "
+        "export_csv.\n\n"
+        "Adding a card and buying tokens are done in the billing panel."
     ),
 )
 

@@ -114,7 +114,7 @@ async def _build_transactions(
             options=ext_options, value=filter_app,
             placeholder="Extension", param_name="filter_app",
             on_change=ui.Call(
-                "__panel__dashboard", tab="transactions",
+                "__panel__dashboard", section="analytics", tab="transactions",
                 period=period, filter_type=filter_type, filter_app="${value}",
                 view="", event_id="", app_id="",
             ),
@@ -127,7 +127,7 @@ async def _build_transactions(
             ],
             value=filter_type, placeholder="Type", param_name="filter_type",
             on_change=ui.Call(
-                "__panel__dashboard", tab="transactions",
+                "__panel__dashboard", section="analytics", tab="transactions",
                 period=period, filter_app=filter_app, filter_type="${value}",
                 view="", event_id="", app_id="",
             ),
@@ -161,7 +161,7 @@ async def _build_transactions(
         rows=rows,
         on_row_click=ui.Call(
             "__panel__dashboard",
-            view="transaction", period=period,
+            section="analytics", view="transaction", period=period,
             tab="", app_id="",
         ),
     )
