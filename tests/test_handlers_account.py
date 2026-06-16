@@ -98,6 +98,26 @@ async def test_resume_subscription_error():
 
 
 @pytest.mark.asyncio
+async def test_renew_subscription_success():
+    b = StubBilling()
+    res = await ha.fn_renew_subscription(make_ctx(billing=b), _Empty())
+    assert res.status == "success"
+    assert res.data.plan == "pro"
+    assert res.data.status == "active"
+    assert res.data.expires_at == "2026-07-16T00:00:00"
+    assert "renewed" in (res.summary or "").lower()
+    assert ("renew_subscription",) in b.calls
+
+
+@pytest.mark.asyncio
+async def test_renew_subscription_no_card_402_surfaces_actionable_error():
+    b = StubBilling(raise_on={"renew_subscription": _http_error(402, "Add a payment method first, then renew your subscription.")})
+    res = await ha.fn_renew_subscription(make_ctx(billing=b), _Empty())
+    assert res.status == "error"
+    assert "payment method" in (res.error or res.summary or "").lower()
+
+
+@pytest.mark.asyncio
 async def test_set_auto_topup_records_call_and_returns_enabled():
     b = StubBilling()
     res = await ha.fn_set_auto_topup(

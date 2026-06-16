@@ -104,6 +104,31 @@ async def test_subscription_section_expired_badge():
 
 
 @pytest.mark.asyncio
+async def test_subscription_section_expired_shows_renew_button_and_hides_plan_change():
+    # Expired PAID plan (not pending_cancel) → Renew button; plan-change dropdown
+    # is suppressed (renew-first), Cancel is not shown for an expired sub.
+    cat = [{"id": "uuid-pro", "name": "pro", "price": 29},
+           {"id": "uuid-business", "name": "business", "price": 79}]
+    b = StubBilling(subscription=SubscriptionInfo(
+        plan="pro", status="active", started_at="2020-01-01T00:00:00",
+        expires_at="2020-02-01T00:00:00"))
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=cat))
+    assert "renew_subscription" in flat                 # Renew button wired
+    assert "change_plan" not in flat                    # plan-change dropdown suppressed while expired
+    assert "cancel_subscription" not in flat            # no Cancel on an expired sub
+
+
+@pytest.mark.asyncio
+async def test_subscription_section_active_future_has_no_renew_button():
+    # A healthy active sub (future expiry) shows NO Renew button.
+    b = StubBilling(subscription=SubscriptionInfo(
+        plan="pro", status="active", started_at="2026-06-15T00:00:00",
+        expires_at="2099-01-01T00:00:00"))
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=[]))
+    assert "renew_subscription" not in flat
+
+
+@pytest.mark.asyncio
 async def test_tokens_section_has_custom_amount_input():
     # Buy-tokens form uses a free-form Input (param_name="tokens"), not a fixed Select.
     flat = _flat(await pa.build_tokens_section(make_ctx(billing=StubBilling())))

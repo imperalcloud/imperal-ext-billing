@@ -38,6 +38,7 @@ class StubBilling:
     auto_topup: AutoTopupSettings = field(default_factory=AutoTopupSettings)
     cancel_result: Optional[dict] = None
     resume_result: Optional[dict] = None
+    renew_result: Optional[dict] = None
     raise_on: dict = field(default_factory=dict)   # method_name -> Exception to raise
     calls: list = field(default_factory=list)
 
@@ -77,6 +78,9 @@ class StubBilling:
     async def resume_subscription(self, user=None):
         self.calls.append(("resume_subscription",)); self._maybe_raise("resume_subscription")
         return self.resume_result or {"plan": "pro", "status": "active", "expires_at": "2026-07-15T00:00:00"}
+    async def renew_subscription(self, user=None):
+        self.calls.append(("renew_subscription",)); self._maybe_raise("renew_subscription")
+        return self.renew_result or {"status": "active", "plan": "pro", "expires_at": "2026-07-16T00:00:00", "payment_intent_id": "pi_renew"}
     async def update_billing_profile(self, profile, user=None):
         self.calls.append(("update_billing_profile", profile)); self._maybe_raise("update_billing_profile"); return True
 

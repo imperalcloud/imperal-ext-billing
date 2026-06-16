@@ -108,6 +108,23 @@ async def fn_resume_subscription(ctx, params: EmptyParams) -> ActionResult:
     )
 
 
+@chat.function("renew_subscription", action_type="write",
+               effects=["update:subscription"], event="billing.subscription_renewed",
+               data_model=ResumeOutcome,
+               description="Renew an expired subscription for the same plan by charging the saved default card; access is restored immediately. Confirmation gate fires automatically.")
+async def fn_renew_subscription(ctx, params: EmptyParams) -> ActionResult:
+    try:
+        r = await ctx.billing.renew_subscription()  # dict {status, plan, expires_at, payment_intent_id}
+    except httpx.HTTPStatusError as e:
+        return ActionResult.error(_detail(e))       # 402 add-a-card / 409 not-expired surface verbatim
+    except Exception as e:
+        return ActionResult.error(f"Could not renew: {e}")
+    return ActionResult.success(
+        data=ResumeOutcome(plan=r.get("plan"), status=r.get("status"), expires_at=r.get("expires_at")),
+        summary=f"Your subscription has been renewed — active until {r.get('expires_at') or 'the next period'}.",
+    )
+
+
 @chat.function("set_auto_topup", action_type="write",
                effects=["update:auto_topup"], event="billing.auto_topup_changed",
                data_model=AutoTopupSettingsEntity,

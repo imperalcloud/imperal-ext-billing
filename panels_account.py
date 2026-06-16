@@ -71,13 +71,18 @@ async def build_subscription_section(ctx, catalog=None):
          "label": f"{(p.get('name') or '').title()} — ${p.get('price')}/mo"}
         for p in selectable
     ]
-    if plan_options:
+    # Renew-first while expired — switching plans on a lapsed sub is confusing.
+    if plan_options and not expired:
         children.append(ui.Form(
             children=[ui.Select(param_name="plan_id", placeholder="Change plan…", options=plan_options)],
             action="change_plan", submit_label="Change plan"))
-    # Cancel / Resume — separate from the plan-change dropdown.
+    # Renew / Cancel / Resume — separate from the plan-change dropdown.
     btns = []
-    if pending_cancel:
+    if expired and (sub.plan or "").lower() not in ("free", "unknown") and not pending_cancel:
+        # Expired PAID plan: offer Renew (write; confirm gate auto-fires) — instant recovery.
+        btns.append(ui.Button("Renew subscription", icon="RefreshCw", variant="primary", size="sm",
+                              on_click=ui.Call("renew_subscription")))
+    elif pending_cancel:
         # Pending cancellation: offer Resume instead of Cancel (write; confirm gate auto-fires).
         btns.append(ui.Button("Resume subscription", icon="RotateCcw", variant="primary", size="sm",
                               on_click=ui.Call("resume_subscription")))
