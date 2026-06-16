@@ -120,6 +120,7 @@ async def billing_sidebar(ctx, period: str = "7d", **kwargs):
                     "__panel__dashboard",
                     section="analytics", view="extension", app_id=entry["app_id"],
                     period=period, tab="", event_id="",
+                    filter_app="", filter_type="", offset=0,
                 ),
             ))
         children.append(ui.Section(

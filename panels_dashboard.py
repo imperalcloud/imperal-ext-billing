@@ -135,6 +135,7 @@ async def billing_dashboard(
                 "__panel__dashboard",
                 section="analytics", view="account", period=period,
                 tab="", event_id="", app_id="",
+                filter_app="", filter_type="", offset=0,
             ),
         ))
         tab_bar = ui.Stack(direction="h", gap=1, children=tab_buttons, sticky=True)
