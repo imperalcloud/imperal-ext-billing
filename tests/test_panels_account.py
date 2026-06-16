@@ -128,3 +128,18 @@ async def test_profile_section_is_editable_form():
     assert "update_billing_profile" in flat
     assert "Form" in _types(nodes)
     assert "Imperal Inc" in flat
+
+
+@pytest.mark.asyncio
+async def test_subscription_upgrade_downgrade_use_plan_id_not_name():
+    # Catalog plans carry a UUID `id` + a `name`; ranking must use `name`
+    # (free/pro/business) while change_plan must receive the UUID `id`.
+    cat = [
+        {"id": "uuid-free", "name": "free", "price": 0},
+        {"id": "uuid-pro", "name": "pro", "price": 29},
+        {"id": "uuid-business", "name": "business", "price": 79},
+    ]
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=StubBilling()), catalog=cat))
+    assert "upgrade_plan" in flat and "uuid-business" in flat   # upgrade target by UUID id
+    assert "downgrade_plan" in flat and "uuid-free" in flat     # downgrade target by UUID id
+    assert "Upgrade to Business" in flat                        # label by name

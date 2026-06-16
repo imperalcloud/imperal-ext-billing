@@ -55,18 +55,23 @@ async def build_subscription_section(ctx, catalog=None):
     cur_rank = _PLAN_ORDER.get((sub.plan or "").lower(), 0)
     btns = []
     for plan in cat:
-        pid = plan.get("id") or plan.get("name") or ""
-        rank = _PLAN_ORDER.get(pid.lower(), -1)
-        if rank < 0 or pid.lower() == (sub.plan or "").lower():
+        # Rank + label by plan NAME (free/starter/pro/business/enterprise); but
+        # change_plan resolves the target by Plan.id, so pass the catalog `id`
+        # (a UUID) — NOT the name. (Bug fix: ranking by `id` skipped every plan.)
+        pname = (plan.get("name") or "").lower()
+        plan_id = plan.get("id") or plan.get("name") or ""
+        rank = _PLAN_ORDER.get(pname, -1)
+        if rank < 0 or pname == (sub.plan or "").lower():
             continue
+        label = (plan.get("name") or "").title()
         if rank > cur_rank:
-            btns.append(ui.Button(label=f"Upgrade to {pid.title()}", icon="ArrowUpCircle",
+            btns.append(ui.Button(label=f"Upgrade to {label}", icon="ArrowUpCircle",
                                   variant="primary", size="sm",
-                                  on_click=ui.Call("upgrade_plan", plan_id=pid, period="monthly")))
+                                  on_click=ui.Call("upgrade_plan", plan_id=plan_id, period="monthly")))
         else:
-            btns.append(ui.Button(label=f"Downgrade to {pid.title()}", icon="ArrowDownCircle",
+            btns.append(ui.Button(label=f"Downgrade to {label}", icon="ArrowDownCircle",
                                   variant="secondary", size="sm",
-                                  on_click=ui.Call("downgrade_plan", plan_id=pid, period="monthly")))
+                                  on_click=ui.Call("downgrade_plan", plan_id=plan_id, period="monthly")))
     if pending_cancel:
         # Pending cancellation: offer Resume instead of Cancel (write; confirm gate auto-fires).
         btns.append(ui.Button("Resume subscription", icon="RotateCcw", variant="primary", size="sm",
