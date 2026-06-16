@@ -92,17 +92,18 @@ async def billing_sidebar(ctx, period: str = "7d", **kwargs):
         title="Actions",
         children=[ui.Stack(direction="v", gap=1, children=[
             ui.Button(
+                label="Manage billing", icon="CreditCard", variant="primary",
+                on_click=ui.Call(
+                    "__panel__dashboard",
+                    section="account", tab="overview", period="7d",
+                    view="", event_id="", app_id="",
+                    filter_app="", filter_type="", offset=0,
+                ),
+            ),
+            ui.Button(
                 label="Export CSV", icon="Download", variant="secondary",
                 on_click=ui.Call("export_csv", period=period),
             ),
-            ui.Button(
-                label="Top Up", icon="CreditCard", variant="primary",
-                on_click=ui.Call("__topup__"),
-            ),
-            ui.Stack(direction="h", gap=1, children=[
-                ui.Button(label="Change Plan", icon="ArrowUpCircle", disabled=True),
-                ui.Badge("Soon", color="gray"),
-            ]),
         ])],
     ))
 
@@ -117,8 +118,8 @@ async def billing_sidebar(ctx, period: str = "7d", **kwargs):
                 badge=ui.Badge(f"{entry['pct']}%", color="blue"),
                 on_click=ui.Call(
                     "__panel__dashboard",
-                    view="extension", app_id=entry["app_id"], period=period,
-                    tab="", event_id="",
+                    section="analytics", view="extension", app_id=entry["app_id"],
+                    period=period, tab="", event_id="",
                 ),
             ))
         children.append(ui.Section(
@@ -130,5 +131,10 @@ async def billing_sidebar(ctx, period: str = "7d", **kwargs):
     # Frontend's isCenterOverlay reads center_overlay=True from unified_config
     # and routes __panel__dashboard to setCenterOverlay → chat shifts to right.
     root = ui.Stack(children=children, gap=2, className="min-h-full")
-    root.props["auto_action"] = ui.Call("__panel__dashboard")
+    root.props["auto_action"] = ui.Call(
+        "__panel__dashboard",
+        section="account", tab="overview", period="7d",
+        view="", event_id="", app_id="",
+        filter_app="", filter_type="", offset=0,
+    )
     return root

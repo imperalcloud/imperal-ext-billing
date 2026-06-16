@@ -1,12 +1,15 @@
-"""Billing · Right panel — analytics dashboard + detail views.
+"""Billing · Center panel — Account (primary) + Analytics (demoted).
 
-Unified right panel (admin pattern): tabs for Overview/Transactions/Pricing,
-plus detail sub-views for Transaction Detail, Extension Stats, Account Summary.
-Builders split into panels_tabs.py and panels_views.py for <300L rule.
+Top-level `section` toggle: "account" (default — subscription, saved cards,
+tokens, payment history, profile) vs "analytics" (the legacy admin pattern:
+tabs for Overview/Transactions/Pricing plus detail sub-views for Transaction
+Detail, Extension Stats, Account Summary). Account sections are built in
+panels_account.py; analytics builders are split into panels_tabs.py /
+panels_views.py for the <300L rule.
 
 IMPORTANT: Every ui.Call("__panel__dashboard", ...) MUST explicitly set ALL
-routing params (view, tab, event_id, app_id, period) to prevent stale state
-from frontend param merging (usePanelDiscovery merges, not replaces).
+routing params (section, view, tab, event_id, app_id, period) to prevent stale
+state from frontend param merging (usePanelDiscovery merges, not replaces).
 
 NOTE: DataTable on_row_click passes clicked row as nested `row` dict in params.
 Template syntax ${row.xxx} is NOT supported — read row[key] from kwargs instead.
