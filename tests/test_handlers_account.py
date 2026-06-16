@@ -160,3 +160,28 @@ async def test_update_billing_profile_error():
         _P(name="Val", company="Imperal Inc", vat="bad", country="EE"),
     )
     assert res.status == "error"
+
+
+@pytest.mark.asyncio
+async def test_update_billing_profile_empty_fields_do_not_wipe():
+    # An untouched form (all empty) must KEEP the existing profile, not blank it.
+    b = StubBilling()
+    ctx = make_ctx(billing=b, attributes={"billing":
+          {"name": "Val", "company": "Imperal Inc", "vat": "EE123", "country": "EE"}})
+    res = await ha.fn_update_billing_profile(ctx, _P(name="", company="", vat="", country=""))
+    assert res.status == "success"
+    sent = [c for c in b.calls if c[0] == "update_billing_profile"][0][1]
+    assert sent == {"name": "Val", "company": "Imperal Inc", "vat": "EE123", "country": "EE"}
+
+
+@pytest.mark.asyncio
+async def test_update_billing_profile_partial_overlay_keeps_others():
+    # Only the provided (non-empty) field overlays; the rest keep current values.
+    b = StubBilling()
+    ctx = make_ctx(billing=b, attributes={"billing":
+          {"name": "Val", "company": "Old Co", "vat": "EE123", "country": "EE"}})
+    res = await ha.fn_update_billing_profile(ctx, _P(name="", company="New Co", vat="", country=""))
+    assert res.status == "success"
+    sent = [c for c in b.calls if c[0] == "update_billing_profile"][0][1]
+    assert sent["company"] == "New Co"
+    assert sent["name"] == "Val" and sent["vat"] == "EE123" and sent["country"] == "EE"

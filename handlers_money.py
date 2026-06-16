@@ -52,7 +52,9 @@ class PaymentMethodIdParams(BaseModel):
 
 
 class BuyTokensParams(BaseModel):
-    tokens: int = Field(description="How many tokens to buy.")
+    # Default so a panel submit can never 500 on a missing value; the panel uses a
+    # preset Select (always submits), and Webbee chat passes an explicit amount.
+    tokens: int = Field(default=10000, gt=0, description="How many tokens to buy.")
 
 
 def _detail(e: httpx.HTTPStatusError) -> str:

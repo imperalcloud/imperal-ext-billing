@@ -150,7 +150,14 @@ async def fn_set_auto_topup(ctx, params: AutoTopupParams) -> ActionResult:
                data_model=BillingProfileUpdated,
                description="Update the user's billing/VAT profile (name, company, VAT/GST number, country). Confirmation gate fires automatically.")
 async def fn_update_billing_profile(ctx, params: BillingProfileParams) -> ActionResult:
-    profile = {"name": params.name, "company": params.company, "vat": params.vat, "country": params.country}
+    import account_data as ad
+    # An untouched Input submits nothing, so an empty field must NOT wipe the saved
+    # value — overlay only the fields the user actually provided onto the current profile.
+    profile = ad.read_billing_profile(ctx)
+    for k, v in (("name", params.name), ("company", params.company),
+                 ("vat", params.vat), ("country", params.country)):
+        if v:
+            profile[k] = v
     try:
         ok = await ctx.billing.update_billing_profile(profile)
     except httpx.HTTPStatusError as e:

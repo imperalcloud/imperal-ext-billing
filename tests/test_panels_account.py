@@ -156,13 +156,18 @@ async def test_subscription_section_active_paid_always_shows_three_controls():
 
 
 @pytest.mark.asyncio
-async def test_tokens_section_has_custom_amount_input():
-    # Buy-tokens form uses a free-form Input (param_name="tokens"), not a fixed Select.
-    flat = _flat(await pa.build_tokens_section(make_ctx(billing=StubBilling())))
+async def test_tokens_section_buy_tokens_is_reliable_preset_select():
+    # Buy-tokens uses a Select of presets (its value= reliably enters the form
+    # submission) NOT a free-form Input — an untouched Input prefill submitted
+    # nothing → "tokens Field required" 500. param_name stays "tokens".
+    nodes = await pa.build_tokens_section(make_ctx(billing=StubBilling()))
+    flat = _flat(nodes)
     assert "buy_tokens" in flat
-    assert "Input" in _types(await pa.build_tokens_section(make_ctx(billing=StubBilling())))
-    assert "tokens" in flat
+    assert "Select" in _types(nodes)
+    assert "'param_name': 'tokens'" in flat        # the buy form binds to tokens
     assert "$1 per 1,000 tokens" in flat
+    assert "10,000 tokens — $10" in flat           # a preset label rendered
+    assert "Input" not in _types(nodes)            # no free-form Input in the tokens card
 
 
 @pytest.mark.asyncio
@@ -207,6 +212,19 @@ async def test_subscription_plan_change_is_dropdown_using_plan_id_not_name():
     assert "Business" in flat and "$79/mo" in flat            # label by name + price
     # The per-plan upgrade/downgrade button loop is gone.
     assert "upgrade_plan" not in flat and "downgrade_plan" not in flat
+
+
+@pytest.mark.asyncio
+async def test_subscription_change_plan_dropdown_preselects_plan_id():
+    # The Change-plan Select preselects the first option (value=) so plan_id is
+    # ALWAYS submitted — an unpicked dropdown otherwise 500s "plan_id Field required".
+    cat = [{"id": "uuid-pro", "name": "pro", "price": 29},
+           {"id": "uuid-business", "name": "business", "price": 79}]
+    b = StubBilling(subscription=SubscriptionInfo(plan="pro", status="active",
+                                                  started_at="", expires_at="2099-01-01T00:00:00"))
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=cat))
+    assert "'param_name': 'plan_id'" in flat
+    assert "'value': 'uuid-business'" in flat   # cheapest OTHER plan preselected (pro is current)
 
 
 @pytest.mark.asyncio

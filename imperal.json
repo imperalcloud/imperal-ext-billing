@@ -1,8 +1,8 @@
 {
   "manifest_schema_version": 3,
-  "sdk_version": "5.4.1",
+  "sdk_version": "5.4.2",
   "app_id": "billing",
-  "version": "2.5.2",
+  "version": "2.5.3",
   "name": "Billing",
   "description": "Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.",
   "icon": "icon.svg",
@@ -2201,14 +2201,13 @@
       "params_schema": {
         "properties": {
           "tokens": {
+            "default": 10000,
             "description": "How many tokens to buy.",
+            "exclusiveMinimum": 0,
             "title": "Tokens",
             "type": "integer"
           }
         },
-        "required": [
-          "tokens"
-        ],
         "title": "BuyTokensParams",
         "type": "object"
       },
@@ -3061,7 +3060,7 @@
         "type": "object"
       },
       "return_schema": {
-        "description": "Result of renew_subscription (renew an expired plan now).",
+        "description": "Result of resume_subscription (undo a scheduled cancellation).",
         "properties": {
           "id": {
             "anyOf": [

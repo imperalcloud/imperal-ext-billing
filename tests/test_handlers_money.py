@@ -120,3 +120,10 @@ async def test_buy_tokens_no_card_402():
     b = StubBilling(raise_on={"topup": _http_error(402, "Add a payment method first, then buy tokens.")})
     res = await hm.fn_buy_tokens(make_ctx(billing=b), _P(tokens=10000))
     assert res.status == "error" and "payment method" in (res.error or "").lower()
+
+
+def test_buy_tokens_params_default_never_500_on_empty():
+    # A panel submit with no value must NOT raise (the old required field 500'd
+    # "tokens Field required"); it defaults to 10000, and an explicit amount wins.
+    assert hm.BuyTokensParams().tokens == 10000
+    assert hm.BuyTokensParams(tokens=37000).tokens == 37000
