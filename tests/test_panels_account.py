@@ -104,9 +104,10 @@ async def test_subscription_section_expired_badge():
 
 
 @pytest.mark.asyncio
-async def test_subscription_section_expired_shows_renew_button_and_hides_plan_change():
-    # Expired PAID plan (not pending_cancel) → Renew button; plan-change dropdown
-    # is suppressed (renew-first), Cancel is not shown for an expired sub.
+async def test_subscription_section_lapsed_paid_shows_renew_cancel_and_plan_change():
+    # A lapsed self-serve PAID plan (expired date, not pending_cancel) offers all
+    # three — they COEXIST: Renew (recover now), Cancel, and the plan-change
+    # dropdown. The earlier "renew-first, hide everything" behavior was a regression.
     cat = [{"id": "uuid-pro", "name": "pro", "price": 29},
            {"id": "uuid-business", "name": "business", "price": 79}]
     b = StubBilling(subscription=SubscriptionInfo(
@@ -114,8 +115,29 @@ async def test_subscription_section_expired_shows_renew_button_and_hides_plan_ch
         expires_at="2020-02-01T00:00:00"))
     flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=cat))
     assert "renew_subscription" in flat                 # Renew button wired
-    assert "change_plan" not in flat                    # plan-change dropdown suppressed while expired
-    assert "cancel_subscription" not in flat            # no Cancel on an expired sub
+    assert "change_plan" in flat                        # plan-change dropdown STILL available
+    assert "cancel_subscription" in flat                # Cancel STILL available
+    assert "uuid-business" in flat                      # an upgrade target is offered
+
+
+@pytest.mark.asyncio
+async def test_subscription_section_enterprise_stale_expiry_keeps_cancel_and_plan_change():
+    # REGRESSION (admin@imperal.io): a contract ENTERPRISE plan (price 0) with a
+    # stale past expiry must NOT be treated as lapsed — no scary "Expired" badge,
+    # and NO Renew button (the gateway rejects renewing a price-0/contract plan,
+    # which produced the bogus "The Free plan doesn't need renewing" error). The
+    # standard management controls — Cancel + plan-change — must stay visible.
+    cat = [{"id": "uuid-pro", "name": "pro", "price": 29},
+           {"id": "uuid-business", "name": "business", "price": 79},
+           {"id": "uuid-ent", "name": "enterprise", "price": 0}]
+    b = StubBilling(subscription=SubscriptionInfo(
+        plan="enterprise", status="active", started_at="2026-04-14T00:58:26",
+        expires_at="2026-05-14T00:58:26"))   # a month in the past
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=cat))
+    assert "renew_subscription" not in flat             # NO broken Renew for a contract plan
+    assert "Expired" not in flat                        # NOT presented as Expired
+    assert "cancel_subscription" in flat                # Cancel restored
+    assert "change_plan" in flat                        # plan-change restored
 
 
 @pytest.mark.asyncio
