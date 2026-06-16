@@ -62,3 +62,16 @@ async def test_set_default_payment_method_error():
     b = StubBilling(raise_on={"set_default_payment_method": _http_error(400, "Stripe failure.")})
     res = await hm.fn_set_default_payment_method(make_ctx(billing=b), _P(pm_id="pm_2"))
     assert res.status == "error"
+
+@pytest.mark.asyncio
+async def test_buy_tokens_success():
+    from imperal_sdk.types.models import TopupResult
+    b = StubBilling(topup_result=TopupResult(succeeded=True, payment_intent_id="pi_x"))
+    res = await hm.fn_buy_tokens(make_ctx(billing=b), _P(tokens=10000))
+    assert res.status == "success" and res.data.succeeded is True
+
+@pytest.mark.asyncio
+async def test_buy_tokens_no_card_402():
+    b = StubBilling(raise_on={"topup": _http_error(402, "Add a payment method first, then buy tokens.")})
+    res = await hm.fn_buy_tokens(make_ctx(billing=b), _P(tokens=10000))
+    assert res.status == "error" and "payment method" in (res.error or "").lower()

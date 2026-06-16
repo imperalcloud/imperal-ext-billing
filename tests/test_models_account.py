@@ -61,3 +61,12 @@ def test_payment_method_removed():
     r = PaymentMethodRemoved(pm_id="pm_1", removed=True)
     assert r.id == "pm_1"
     assert r.removed is True
+
+def test_token_purchase_outcome_canon():
+    from models_account import TokenPurchaseOutcome
+    o = TokenPurchaseOutcome(tokens=10000, succeeded=True, requires_action=False,
+                             payment_intent_id="pi_x")
+    assert o.id == "topup"
+    assert o.kind == "tokenpurchaseoutcome"
+    assert o.title == "Top-up 10000 tokens"
+    assert o.succeeded is True

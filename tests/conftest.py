@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from imperal_sdk.types.models import (  # the LIVE return dataclasses
     PaymentMethod, PaymentRecord, ChangePlanResult, TopupResult,
-    SetupIntentResult, BalanceInfo,
+    SetupIntentResult, BalanceInfo, PlanInfo, AutoTopupSettings,
 )
 from imperal_sdk.billing.client import SubscriptionInfo, LimitsResult  # the LIVE inlined ones
 
@@ -34,6 +34,9 @@ class StubBilling:
     change_plan_result: Optional[ChangePlanResult] = None
     topup_result: Optional[TopupResult] = None
     portal_url: str = "https://billing.stripe.com/p/session_test"
+    plans: list = field(default_factory=list)
+    auto_topup: AutoTopupSettings = field(default_factory=AutoTopupSettings)
+    cancel_result: Optional[dict] = None
     raise_on: dict = field(default_factory=dict)   # method_name -> Exception to raise
     calls: list = field(default_factory=list)
 
@@ -50,7 +53,7 @@ class StubBilling:
     async def change_plan(self, plan_id, period="monthly", user=None):
         self.calls.append(("change_plan", plan_id, period)); self._maybe_raise("change_plan")
         return self.change_plan_result or ChangePlanResult(action="upgrade", plan=plan_id, succeeded=True)
-    async def topup(self, tokens, price_cents, save_payment_method=True, user=None):
+    async def topup(self, tokens, price_cents, save_payment_method=True, off_session=True, user=None):
         self.calls.append(("topup", tokens, price_cents)); self._maybe_raise("topup")
         return self.topup_result or TopupResult(payment_intent_id="pi_test", client_secret="cs_test")
     async def set_default_payment_method(self, pm_id, user=None):
@@ -63,6 +66,15 @@ class StubBilling:
     async def create_billing_portal_session(self, user=None):  # Phase 2 (prereq adds this)
         self.calls.append(("create_billing_portal_session",)); self._maybe_raise("create_billing_portal_session")
         return self.portal_url
+    async def list_plans(self, user=None): self.calls.append(("list_plans",)); return list(self.plans)
+    async def get_auto_topup(self, user=None): self.calls.append(("get_auto_topup",)); return self.auto_topup
+    async def set_auto_topup(self, enabled, threshold_pct=10, recharge_tokens=20000, payment_method_id="", user=None):
+        self.calls.append(("set_auto_topup", enabled, threshold_pct, recharge_tokens)); self._maybe_raise("set_auto_topup"); return True
+    async def cancel_subscription(self, user=None):
+        self.calls.append(("cancel_subscription",)); self._maybe_raise("cancel_subscription")
+        return self.cancel_result or {"plan": "pro", "status": "active", "expires_at": "2026-07-15T00:00:00"}
+    async def update_billing_profile(self, profile, user=None):
+        self.calls.append(("update_billing_profile", profile)); self._maybe_raise("update_billing_profile"); return True
 
 
 def make_ctx(billing=None, imperal_id="imp_u_TEST", attributes=None):
