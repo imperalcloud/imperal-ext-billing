@@ -8,19 +8,13 @@ from pydantic import BaseModel, Field
 
 from app import chat, ActionResult
 from handlers_payment import EmptyParams
+from handlers_money import _detail  # shared gateway-error message extractor (Rule 9: no copy-paste)
 from models_account import (
     PlanList, AutoTopupSettingsEntity, PortalLink,
     CancelOutcome, BillingProfileUpdated,
 )
 
 log = logging.getLogger("ext.billing.account")
-
-
-def _detail(e: httpx.HTTPStatusError) -> str:
-    try:
-        return e.response.json().get("detail") or str(e)
-    except Exception:
-        return str(e)
 
 
 @chat.function("list_plans", action_type="read",

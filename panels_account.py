@@ -119,11 +119,11 @@ async def build_tokens_section(ctx):
     children.append(ui.Form(
         children=[
             ui.Toggle(param_name="enabled", label="Auto top-up", value=bool(at.enabled)),
-            ui.Select(param_name="recharge_tokens", options=[
+            ui.Select(param_name="recharge_tokens", value=str(at.recharge_tokens or 20000), options=[
                 {"value": "20000", "label": "20,000"},
                 {"value": "50000", "label": "50,000"},
             ]),
-            ui.Select(param_name="threshold_pct", options=[
+            ui.Select(param_name="threshold_pct", value=str(at.threshold_pct or 10), options=[
                 {"value": "10", "label": "10%"},
                 {"value": "20", "label": "20%"},
             ]),
