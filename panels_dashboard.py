@@ -26,6 +26,7 @@ from panels_views import (
 from panels_tabs import (
     _build_overview, _build_transactions, _build_pricing, _build_llm_costs,
 )
+import panels_account as pa
 
 log = logging.getLogger("billing")
 
@@ -34,12 +35,13 @@ log = logging.getLogger("billing")
 # ─── Right Panel (main router) ────────────────────────────────────────── #
 
 @ext.panel(
-    "dashboard", slot="center", title="Analytics", icon="BarChart3",
+    "dashboard", slot="center", title="Billing", icon="BarChart3",
     center_overlay=True,  # federal v4.1.8 — chat shifts to 380px right rail
     refresh="on_event:billing.deduct,billing.credit",
 )
 async def billing_dashboard(
     ctx,
+    section: str = "account",
     tab: str = "overview",
     period: str = "7d",
     filter_app: str = "",
@@ -50,7 +52,7 @@ async def billing_dashboard(
     app_id: str = "",
     **kwargs,
 ):
-    """Right panel: tabs (Overview/Transactions/Pricing) + detail sub-views."""
+    """Center panel: Account (primary) + Analytics (toggle) — tabs + detail sub-views."""
     uid = _user_id(ctx)
 
     # DataTable on_row_click passes clicked row as nested dict in kwargs.
@@ -63,6 +65,38 @@ async def billing_dashboard(
             app_id = str(row_data.get("app_id", ""))
 
     try:
+        # ── Top-level section switch: Account (default) vs Analytics ──
+        section_bar = ui.Stack(direction="h", gap=1, children=[
+            ui.Button(
+                "Account", icon="User", size="sm",
+                variant="primary" if section == "account" else "ghost",
+                on_click=ui.Call(
+                    "__panel__dashboard", section="account", tab="overview",
+                    period=period, view="", event_id="", app_id="",
+                    filter_app="", filter_type="", offset=0,
+                ),
+            ),
+            ui.Button(
+                "Analytics", icon="BarChart3", size="sm",
+                variant="primary" if section == "analytics" else "ghost",
+                on_click=ui.Call(
+                    "__panel__dashboard", section="analytics", tab="overview",
+                    period=period, view="", event_id="", app_id="",
+                    filter_app="", filter_type="", offset=0,
+                ),
+            ),
+        ], sticky=True)
+
+        if section == "account":
+            sections = []
+            sections += await pa.build_subscription_section(ctx)
+            sections += await pa.build_payment_methods_section(ctx)
+            sections += await pa.build_tokens_section(ctx)
+            sections += await pa.build_history_section(ctx)
+            sections += await pa.build_profile_section(ctx)
+            return ui.Stack(direction="v", gap=3, children=[section_bar, *sections])
+
+        # ───── Analytics (existing behavior, unchanged below) ─────
         # Detail sub-views (triggered by clicks)
         tz = await get_user_timezone(ctx)
 
@@ -86,7 +120,7 @@ async def billing_dashboard(
                 variant="primary" if tab == tid else "ghost",
                 on_click=ui.Call(
                     "__panel__dashboard",
-                    tab=tid, period=period,
+                    section="analytics", tab=tid, period=period,
                     view="", event_id="", app_id="",
                     filter_app="", filter_type="", offset=0,
                 ),
@@ -96,7 +130,7 @@ async def billing_dashboard(
             "Account", icon="User", size="sm", variant="ghost",
             on_click=ui.Call(
                 "__panel__dashboard",
-                view="account", period=period,
+                section="analytics", view="account", period=period,
                 tab="", event_id="", app_id="",
             ),
         ))
@@ -114,8 +148,8 @@ async def billing_dashboard(
         else:
             content = await _build_overview(uid, period)
 
-        return ui.Stack(children=[tab_bar, content], gap=2)
+        return ui.Stack(children=[section_bar, tab_bar, content], gap=2)
 
     except Exception as e:
-        log.error("Dashboard error tab=%s view=%s: %s", tab, view, e)
+        log.error("Dashboard error section=%s tab=%s view=%s: %s", section, tab, view, e)
         return ui.Alert(title="Error", message=str(e), type="error")

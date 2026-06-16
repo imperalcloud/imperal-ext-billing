@@ -13,7 +13,7 @@ def _back_button(period: str, label: str = "Back", target_tab: str = "overview")
         label, icon="ArrowLeft", variant="ghost", size="sm",
         on_click=ui.Call(
             "__panel__dashboard",
-            tab=target_tab, period=period,
+            section="analytics", tab=target_tab, period=period,
             view="", event_id="", app_id="",
         ),
     )

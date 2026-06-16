@@ -25,7 +25,7 @@ def _period_selector(current: str, tab: str):
             variant="primary" if current == val else "ghost",
             on_click=ui.Call(
                 "__panel__dashboard",
-                tab=tab, period=val,
+                section="analytics", tab=tab, period=val,
                 view="", event_id="", app_id="",
             ),
         ))
