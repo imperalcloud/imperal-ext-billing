@@ -34,6 +34,8 @@ async def build_subscription_section(ctx, catalog=None):
     pending_cancel = bool(getattr(sub, "cancel_at_period_end", False))
     status_badge = (ui.Badge("Expired", color="red") if expired
                     else ui.Badge(sub.status, color="green" if sub.status == "active" else "yellow"))
+    # When expired the Status line must agree with the (red) badge, not the raw "active".
+    status_value = "Expired" if expired else sub.status
     children = [
         ui.Stack(direction="h", gap=1, children=[
             ui.Badge(sub.plan.title(), color="blue"),
@@ -41,7 +43,7 @@ async def build_subscription_section(ctx, catalog=None):
         ]),
         ui.KeyValue(items=[
             {"key": "Plan", "value": sub.plan.title()},
-            {"key": "Status", "value": sub.status},
+            {"key": "Status", "value": status_value},
             {"key": "Renews", "value": sub.expires_at or "—"},
         ]),
     ]
@@ -50,28 +52,23 @@ async def build_subscription_section(ctx, catalog=None):
         children.append(ui.Alert(
             type="warning", title="Cancellation scheduled",
             message=f"Your {sub.plan} plan is set to cancel on {sub.expires_at}. Resume to keep it."))
-    # Upgrade/downgrade controls vs the catalog (charges off-session against the saved default card).
+    # ONE plan-change control: a dropdown of the OTHER plans submitting to change_plan.
+    # The gateway decides upgrade-vs-downgrade by price. Option value = the catalog
+    # `id` (a UUID, which change_plan resolves by Plan.id); label = plan name + price.
     cat = catalog if catalog is not None else await ad.fetch_plan_catalog(ctx)
-    cur_rank = _PLAN_ORDER.get((sub.plan or "").lower(), 0)
+    plan_options = [
+        {"value": p.get("id") or p.get("name"),
+         "label": f"{(p.get('name') or '').title()} — ${p.get('price')}/mo"}
+        for p in cat
+        if (p.get("name") or "").lower() in _PLAN_ORDER
+        and (p.get("name") or "").lower() != (sub.plan or "").lower()
+    ]
+    if plan_options:
+        children.append(ui.Form(
+            children=[ui.Select(param_name="plan_id", placeholder="Change plan…", options=plan_options)],
+            action="change_plan", submit_label="Change plan"))
+    # Cancel / Resume — separate from the plan-change dropdown.
     btns = []
-    for plan in cat:
-        # Rank + label by plan NAME (free/starter/pro/business/enterprise); but
-        # change_plan resolves the target by Plan.id, so pass the catalog `id`
-        # (a UUID) — NOT the name. (Bug fix: ranking by `id` skipped every plan.)
-        pname = (plan.get("name") or "").lower()
-        plan_id = plan.get("id") or plan.get("name") or ""
-        rank = _PLAN_ORDER.get(pname, -1)
-        if rank < 0 or pname == (sub.plan or "").lower():
-            continue
-        label = (plan.get("name") or "").title()
-        if rank > cur_rank:
-            btns.append(ui.Button(label=f"Upgrade to {label}", icon="ArrowUpCircle",
-                                  variant="primary", size="sm",
-                                  on_click=ui.Call("upgrade_plan", plan_id=plan_id, period="monthly")))
-        else:
-            btns.append(ui.Button(label=f"Downgrade to {label}", icon="ArrowDownCircle",
-                                  variant="secondary", size="sm",
-                                  on_click=ui.Call("downgrade_plan", plan_id=plan_id, period="monthly")))
     if pending_cancel:
         # Pending cancellation: offer Resume instead of Cancel (write; confirm gate auto-fires).
         btns.append(ui.Button("Resume subscription", icon="RotateCcw", variant="primary", size="sm",
@@ -82,7 +79,10 @@ async def build_subscription_section(ctx, catalog=None):
                               on_click=ui.Call("cancel_subscription")))
     if btns:
         children.append(ui.Stack(direction="h", gap=1, children=btns))
-    return [ui.Card(title="Subscription", content=ui.Stack(direction="v", gap=2, children=children))]
+    return [ui.Card(
+        title="Plan & access",
+        subtitle="Your subscription = panel access, features, and your monthly token allowance + cap.",
+        content=ui.Stack(direction="v", gap=2, children=children))]
 
 
 async def build_payment_methods_section(ctx):
@@ -162,7 +162,10 @@ async def build_tokens_section(ctx):
             ]),
         ],
         action="set_auto_topup", submit_label="Save auto top-up"))
-    return [ui.Card(title="Tokens", content=ui.Stack(direction="v", gap=2, children=children))]
+    return [ui.Card(
+        title="Tokens",
+        subtitle="Usage credits — spent on Webbee actions; top up here.",
+        content=ui.Stack(direction="v", gap=2, children=children))]
 
 
 async def build_history_section(ctx):

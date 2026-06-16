@@ -1363,6 +1363,193 @@
       "owner_chat_tool": "tool_billing_chat"
     },
     {
+      "name": "change_plan",
+      "description": "Change the user's subscription to a different plan — the system charges a prorated upgrade immediately or schedules a downgrade for period-end automatically. Confirmation gate fires first.",
+      "action_type": "write",
+      "chain_callable": true,
+      "effects": [
+        "update:subscription"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "plan_id": {
+            "description": "Target plan id (e.g. 'pro', 'business').",
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "period": {
+            "default": "monthly",
+            "description": "Billing period: 'monthly' (default).",
+            "title": "Period",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ],
+        "title": "ChangePlanParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "description": "Result of upgrade_plan / downgrade_plan. Mirrors SDK ChangePlanResult.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "kind": {
+            "default": "",
+            "title": "Kind",
+            "type": "string"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Subtitle"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Action"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Plan"
+          },
+          "succeeded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Succeeded"
+          },
+          "requires_action": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Requires Action"
+          },
+          "effective_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Effective At"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pending"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "ChangePlanOutcome",
+        "type": "object",
+        "x-sdl": "entity"
+      },
+      "event": "billing.plan_changed",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    },
+    {
       "name": "upgrade_plan",
       "description": "Upgrade the user's subscription to a higher plan. The prorated difference is charged immediately to the saved default card. Confirmation gate fires automatically; the user must confirm first.",
       "action_type": "write",

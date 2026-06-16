@@ -59,6 +59,20 @@ async def _change_plan(ctx, plan_id: str, period: str) -> ActionResult:
 
 
 @chat.function(
+    "change_plan",
+    action_type="write",
+    effects=["update:subscription"],
+    event="billing.plan_changed",
+    data_model=ChangePlanOutcome,
+    description=("Change the user's subscription to a different plan — the system charges "
+                 "a prorated upgrade immediately or schedules a downgrade for period-end "
+                 "automatically. Confirmation gate fires first."),
+)
+async def fn_change_plan(ctx, params: ChangePlanParams) -> ActionResult:
+    return await _change_plan(ctx, params.plan_id, params.period)
+
+
+@chat.function(
     "upgrade_plan",
     action_type="write",
     effects=["update:subscription"],

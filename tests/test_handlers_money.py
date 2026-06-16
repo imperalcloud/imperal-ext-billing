@@ -33,6 +33,21 @@ async def test_upgrade_plan_free_to_paid_409_routes_to_checkout():
     assert res.status == "error" and "checkout" in (res.error or res.summary or "").lower()
 
 @pytest.mark.asyncio
+async def test_change_plan_unified_tool_delegates_to_change_plan():
+    # The unified change_plan tool reuses _change_plan; the gateway decides
+    # upgrade-vs-downgrade by price. Success path returns a ChangePlanOutcome.
+    b = StubBilling(change_plan_result=ChangePlanResult(action="upgrade", plan="business", succeeded=True))
+    res = await hm.fn_change_plan(make_ctx(billing=b), _P(plan_id="uuid-business", period="monthly"))
+    assert res.status == "success" and res.data.succeeded is True
+    assert ("change_plan", "uuid-business", "monthly") in b.calls
+
+@pytest.mark.asyncio
+async def test_change_plan_unified_tool_surfaces_error():
+    b = StubBilling(raise_on={"change_plan": _http_error(402, "Add a payment method first.")})
+    res = await hm.fn_change_plan(make_ctx(billing=b), _P(plan_id="uuid-pro", period="monthly"))
+    assert res.status == "error" and "payment method" in (res.error or "").lower()
+
+@pytest.mark.asyncio
 async def test_downgrade_plan_pending():
     b = StubBilling(change_plan_result=ChangePlanResult(action="downgrade", plan="pro", pending=True, effective_at="2026-07-15T00:00:00"))
     res = await hm.fn_downgrade_plan(make_ctx(billing=b), _P(plan_id="pro", period="monthly"))

@@ -131,15 +131,49 @@ async def test_profile_section_is_editable_form():
 
 
 @pytest.mark.asyncio
-async def test_subscription_upgrade_downgrade_use_plan_id_not_name():
-    # Catalog plans carry a UUID `id` + a `name`; ranking must use `name`
-    # (free/pro/business) while change_plan must receive the UUID `id`.
+async def test_subscription_plan_change_is_dropdown_using_plan_id_not_name():
+    # ONE plan-change control: a Select of the OTHER plans inside a Form that
+    # submits to `change_plan`. Option value MUST be the UUID `id`, label uses
+    # the plan name + price. The current plan (pro) is excluded.
     cat = [
         {"id": "uuid-free", "name": "free", "price": 0},
         {"id": "uuid-pro", "name": "pro", "price": 29},
         {"id": "uuid-business", "name": "business", "price": 79},
     ]
-    flat = _flat(await pa.build_subscription_section(make_ctx(billing=StubBilling()), catalog=cat))
-    assert "upgrade_plan" in flat and "uuid-business" in flat   # upgrade target by UUID id
-    assert "downgrade_plan" in flat and "uuid-free" in flat     # downgrade target by UUID id
-    assert "Upgrade to Business" in flat                        # label by name
+    nodes = await pa.build_subscription_section(make_ctx(billing=StubBilling()), catalog=cat)
+    flat = _flat(nodes)
+    types = _types(nodes)
+    assert "Form" in types and "Select" in types               # single dropdown control
+    assert "change_plan" in flat                               # form submits to ONE tool
+    assert "uuid-business" in flat and "uuid-free" in flat      # option values = UUID id
+    assert "uuid-pro" not in flat                              # current plan excluded
+    assert "Business" in flat and "$79/mo" in flat            # label by name + price
+    # The per-plan upgrade/downgrade button loop is gone.
+    assert "upgrade_plan" not in flat and "downgrade_plan" not in flat
+
+
+@pytest.mark.asyncio
+async def test_subscription_card_has_clarifying_subtitle():
+    # The Subscription card spells out plan vs tokens so users don't conflate them.
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=StubBilling()), catalog=[]))
+    assert "Plan & access" in flat
+    assert "monthly token allowance" in flat
+
+
+@pytest.mark.asyncio
+async def test_subscription_status_row_reads_expired_when_past_due():
+    # When expired, the Status KeyValue row must agree with the Expired badge.
+    b = StubBilling(subscription=SubscriptionInfo(
+        plan="pro", status="active", started_at="2020-01-01T00:00:00",
+        expires_at="2020-02-01T00:00:00"))
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=[]))
+    assert "Expired" in flat
+    # The raw "active" status must NOT leak into the Status KeyValue row when expired.
+    assert "'key': 'Status', 'value': 'active'" not in flat
+    assert "'key': 'Status', 'value': 'Expired'" in flat
+
+
+@pytest.mark.asyncio
+async def test_tokens_card_has_clarifying_subtitle():
+    flat = _flat(await pa.build_tokens_section(make_ctx(billing=StubBilling())))
+    assert "Usage credits" in flat
