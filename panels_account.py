@@ -16,10 +16,10 @@ log = logging.getLogger("ext.billing.panels_account")
 # name-based guard in handlers_money._change_plan.
 _SELF_SERVICE_PLANS = ("pro", "business")
 
-# Priced, self-serve renewable plans — chargeable on a saved card, so they can
-# "lapse" and offer Renew. Enterprise is contract-only (price 0 in the catalog)
-# and free/micro carry no charge: none of these ever show an Expired/Renew state.
-# Keep in sync with the priced plans in the catalog (and the gateway renew guard).
+# Priced, self-serve renewable plans (chargeable on a saved card). Used ONLY to
+# decide the "Expired" badge — a contract plan (enterprise, price 0) or free is
+# never flagged Expired on a stale date. The Renew BUTTON itself is shown for any
+# active paid plan; the gateway returns "managed by contract" for a price-0 renew.
 _RENEWABLE_PLANS = ("starter", "pro", "business")
 
 # Plans with no paid subscription to cancel.
@@ -92,24 +92,22 @@ async def build_subscription_section(ctx, catalog=None):
         children.append(ui.Form(
             children=[ui.Select(param_name="plan_id", placeholder="Change plan…", options=plan_options)],
             action="change_plan", submit_label="Change plan"))
-    # Action buttons COEXIST (no longer mutually exclusive — that was the regression):
-    #   • pending cancel  → Resume only
-    #   • lapsed paid plan → Renew (instant recovery by charging the saved card)
-    #   • any active paid plan (incl. lapsed) → Cancel
+    # Active paid plan → ALWAYS the three management actions together (Valentin,
+    # 2026-06-16): Change plan (the dropdown above) + Cancel plan + Renew plan.
+    # Each confirm-gates automatically (write/destructive). The gateway returns a
+    # clean message for the no-op cases so a button never lies or crashes: Renew on
+    # a still-active sub → "nothing to renew"; Renew on a contract plan (enterprise,
+    # price 0) → "managed by contract — contact us to renew".
     btns = []
     if pending_cancel:
-        # Pending cancellation: offer Resume instead of Cancel (write; confirm gate auto-fires).
+        # A cancellation is already scheduled — the actionable button is Resume (undo).
         btns.append(ui.Button("Resume subscription", icon="RotateCcw", variant="primary", size="sm",
                               on_click=ui.Call("resume_subscription")))
-    else:
-        if lapsed:
-            # Lapsed self-serve PAID plan: offer Renew (write; confirm gate auto-fires).
-            btns.append(ui.Button("Renew subscription", icon="RefreshCw", variant="primary", size="sm",
-                                  on_click=ui.Call("renew_subscription")))
-        if is_paid and sub.status == "active":
-            # Cancel plan (destructive; confirm gate auto-fires) — paid plans only.
-            btns.append(ui.Button("Cancel plan", icon="XCircle", variant="danger", size="sm",
-                                  on_click=ui.Call("cancel_subscription")))
+    elif is_paid and sub.status == "active":
+        btns.append(ui.Button("Cancel plan", icon="XCircle", variant="danger", size="sm",
+                              on_click=ui.Call("cancel_subscription")))
+        btns.append(ui.Button("Renew plan", icon="RefreshCw", variant="primary", size="sm",
+                              on_click=ui.Call("renew_subscription")))
     if btns:
         children.append(ui.Stack(direction="h", gap=1, children=btns))
     return [ui.Card(
