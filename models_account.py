@@ -186,6 +186,21 @@ class CancelOutcome(sdl.Entity):
         return data
 
 
+class ResumeOutcome(sdl.Entity):
+    """Result of resume_subscription (undo a scheduled cancellation)."""
+    plan: Optional[str] = None
+    status: Optional[str] = None
+    expires_at: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sdl_canon(cls, data):
+        if isinstance(data, dict):
+            data.setdefault("id", "subscription")
+            data.setdefault("title", "Subscription resumed")
+        return data
+
+
 class BillingProfileUpdated(sdl.Entity):
     """Result of update_billing_profile."""
     name: Optional[str] = None

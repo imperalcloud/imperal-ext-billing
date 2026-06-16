@@ -2,6 +2,7 @@
 import pytest
 from conftest import make_ctx, StubBilling
 from imperal_sdk.types.models import PaymentMethod
+from imperal_sdk.billing.client import SubscriptionInfo
 import panels_account as pa
 
 
@@ -74,11 +75,42 @@ async def test_subscription_section_has_cancel_button_for_active_paid():
 
 @pytest.mark.asyncio
 async def test_subscription_section_no_cancel_for_free_plan():
-    from imperal_sdk.billing.client import SubscriptionInfo
     b = StubBilling(subscription=SubscriptionInfo(plan="free", status="active",
                                                   started_at="", expires_at=""))
     flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=[]))
     assert "cancel_subscription" not in flat
+
+
+@pytest.mark.asyncio
+async def test_subscription_section_pending_cancel_shows_resume_banner():
+    # cancel_at_period_end=True → banner + Resume button, NO Cancel button.
+    b = StubBilling(subscription=SubscriptionInfo(
+        plan="pro", status="active", started_at="2026-06-15T00:00:00",
+        expires_at="2026-07-15T00:00:00", cancel_at_period_end=True))
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=[]))
+    assert "resume_subscription" in flat
+    assert "Cancellation scheduled" in flat
+    assert "cancel_subscription" not in flat
+
+
+@pytest.mark.asyncio
+async def test_subscription_section_expired_badge():
+    # expires_at in the past → "Expired" badge.
+    b = StubBilling(subscription=SubscriptionInfo(
+        plan="pro", status="active", started_at="2020-01-01T00:00:00",
+        expires_at="2020-02-01T00:00:00"))
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=[]))
+    assert "Expired" in flat
+
+
+@pytest.mark.asyncio
+async def test_tokens_section_has_custom_amount_input():
+    # Buy-tokens form uses a free-form Input (param_name="tokens"), not a fixed Select.
+    flat = _flat(await pa.build_tokens_section(make_ctx(billing=StubBilling())))
+    assert "buy_tokens" in flat
+    assert "Input" in _types(await pa.build_tokens_section(make_ctx(billing=StubBilling())))
+    assert "tokens" in flat
+    assert "$1 per 1,000 tokens" in flat
 
 
 @pytest.mark.asyncio

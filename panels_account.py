@@ -3,6 +3,7 @@ ui.* node lists. Reads via ctx.billing (safe-degrading) + account_data. Card
 capture (Add card / invoices via Stripe Customer Portal) + Buy-tokens are added
 in Phase 2 (panels_account_capture wiring)."""
 import logging
+from datetime import datetime, timezone
 from imperal_sdk import ui
 from app import _user_id
 import account_data as ad
@@ -12,14 +13,31 @@ log = logging.getLogger("ext.billing.panels_account")
 _PLAN_ORDER = {"free": 0, "starter": 1, "pro": 2, "business": 3, "enterprise": 4}
 
 
+def _is_expired(expires_at) -> bool:
+    """True if the ISO `expires_at` is in the past. Parse errors → not expired."""
+    if not expires_at:
+        return False
+    try:
+        dt = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt < datetime.now(timezone.utc)
+    except (ValueError, TypeError):
+        return False
+
+
 async def build_subscription_section(ctx, catalog=None):
     sub = await ctx.billing.get_subscription()
     if ad.subscription_unavailable(sub):
         return [ui.Alert(title="Billing unavailable", message="Could not load your subscription. Try again shortly.", type="warning")]
+    expired = _is_expired(sub.expires_at)
+    pending_cancel = bool(getattr(sub, "cancel_at_period_end", False))
+    status_badge = (ui.Badge("Expired", color="red") if expired
+                    else ui.Badge(sub.status, color="green" if sub.status == "active" else "yellow"))
     children = [
         ui.Stack(direction="h", gap=1, children=[
             ui.Badge(sub.plan.title(), color="blue"),
-            ui.Badge(sub.status, color="green" if sub.status == "active" else "yellow"),
+            status_badge,
         ]),
         ui.KeyValue(items=[
             {"key": "Plan", "value": sub.plan.title()},
@@ -27,6 +45,11 @@ async def build_subscription_section(ctx, catalog=None):
             {"key": "Renews", "value": sub.expires_at or "—"},
         ]),
     ]
+    # Scheduled-cancellation banner — surfaces the effective date and a Resume action.
+    if pending_cancel:
+        children.append(ui.Alert(
+            type="warning", title="Cancellation scheduled",
+            message=f"Your {sub.plan} plan is set to cancel on {sub.expires_at}. Resume to keep it."))
     # Upgrade/downgrade controls vs the catalog (charges off-session against the saved default card).
     cat = catalog if catalog is not None else await ad.fetch_plan_catalog(ctx)
     cur_rank = _PLAN_ORDER.get((sub.plan or "").lower(), 0)
@@ -44,8 +67,12 @@ async def build_subscription_section(ctx, catalog=None):
             btns.append(ui.Button(label=f"Downgrade to {pid.title()}", icon="ArrowDownCircle",
                                   variant="secondary", size="sm",
                                   on_click=ui.Call("downgrade_plan", plan_id=pid, period="monthly")))
-    # Cancel plan (destructive; confirm gate auto-fires) — only for an active PAID plan.
-    if sub.status == "active" and (sub.plan or "").lower() not in ("free", "unknown"):
+    if pending_cancel:
+        # Pending cancellation: offer Resume instead of Cancel (write; confirm gate auto-fires).
+        btns.append(ui.Button("Resume subscription", icon="RotateCcw", variant="primary", size="sm",
+                              on_click=ui.Call("resume_subscription")))
+    elif sub.status == "active" and (sub.plan or "").lower() not in ("free", "unknown"):
+        # Cancel plan (destructive; confirm gate auto-fires) — only for an active PAID plan.
         btns.append(ui.Button("Cancel plan", icon="XCircle", variant="danger", size="sm",
                               on_click=ui.Call("cancel_subscription")))
     if btns:
@@ -106,11 +133,12 @@ async def build_tokens_section(ctx):
     if pct <= 15:
         children.append(ui.Alert(title="Low balance", message="Your token balance is running low.", type="warning"))
     # Buy-tokens (off-session charge to the saved default card; confirm gate auto-fires).
+    # Free-form amount — buy_tokens(tokens:int) accepts any int (pydantic coerces the string).
     children.append(ui.Form(
-        children=[ui.Select(param_name="tokens", options=[
-            {"value": "10000", "label": "10,000 ($10)"},
-            {"value": "50000", "label": "50,000 ($50)"},
-        ])],
+        children=[
+            ui.Input(param_name="tokens", value="10000", placeholder="Tokens (e.g. 25000)"),
+            ui.Text("$1 per 1,000 tokens"),
+        ],
         action="buy_tokens", submit_label="Buy tokens"))
     # Auto-top-up: current state + a save form (set_auto_topup is write; confirm gate auto-fires).
     at = await ctx.billing.get_auto_topup()  # AutoTopupSettings; safe-degrades to disabled defaults

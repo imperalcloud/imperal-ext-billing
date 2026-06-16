@@ -78,6 +78,26 @@ async def test_cancel_subscription_error():
 
 
 @pytest.mark.asyncio
+async def test_resume_subscription_continues():
+    b = StubBilling()
+    res = await ha.fn_resume_subscription(make_ctx(billing=b), _Empty())
+    assert res.status == "success"
+    assert res.data.plan == "pro"
+    assert res.data.status == "active"
+    assert res.data.expires_at == "2026-07-15T00:00:00"
+    assert "cancellation undone" in (res.summary or "").lower()
+    assert ("resume_subscription",) in b.calls
+
+
+@pytest.mark.asyncio
+async def test_resume_subscription_error():
+    b = StubBilling(raise_on={"resume_subscription": _http_error(409, "Nothing to resume.")})
+    res = await ha.fn_resume_subscription(make_ctx(billing=b), _Empty())
+    assert res.status == "error"
+    assert "Nothing to resume" in (res.error or res.summary or "")
+
+
+@pytest.mark.asyncio
 async def test_set_auto_topup_records_call_and_returns_enabled():
     b = StubBilling()
     res = await ha.fn_set_auto_topup(

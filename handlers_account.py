@@ -11,7 +11,7 @@ from handlers_payment import EmptyParams
 from handlers_money import _detail  # shared gateway-error message extractor (Rule 9: no copy-paste)
 from models_account import (
     PlanList, AutoTopupSettingsEntity, PortalLink,
-    CancelOutcome, BillingProfileUpdated,
+    CancelOutcome, ResumeOutcome, BillingProfileUpdated,
 )
 
 log = logging.getLogger("ext.billing.account")
@@ -77,16 +77,34 @@ class BillingProfileParams(BaseModel):
                description="Cancel the user's paid subscription. It stays active until the end of the current billing period (no further charges). Confirmation gate fires automatically.")
 async def fn_cancel_subscription(ctx, params: EmptyParams) -> ActionResult:
     try:
-        r = await ctx.billing.cancel_subscription()  # dict-like {plan,status,expires_at} or CancelResult
+        r = await ctx.billing.cancel_subscription()  # dict {status, plan, expires_at, cancel_at_period_end}
     except httpx.HTTPStatusError as e:
         return ActionResult.error(_detail(e))
     except Exception as e:
         return ActionResult.error(f"Could not cancel: {e}")
-    plan = getattr(r, "plan", None) or (r.get("plan") if isinstance(r, dict) else None)
-    eff = getattr(r, "expires_at", None) or (r.get("expires_at") if isinstance(r, dict) else None)
+    plan = r.get("plan")
+    eff = r.get("expires_at")
     return ActionResult.success(
         data=CancelOutcome(plan=plan, status="cancel_at_period_end", effective_at=eff),
-        summary=f"Your {plan or 'plan'} stays active until {eff or 'the end of the period'}, then cancels. No further charges.",
+        summary=(f"Your {plan or 'plan'} plan stays active until {eff or 'the end of the period'}, "
+                 "then cancels. No further charges."),
+    )
+
+
+@chat.function("resume_subscription", action_type="write",
+               effects=["update:subscription"], event="billing.subscription_resumed",
+               data_model=ResumeOutcome,
+               description="Undo a scheduled cancellation — keep the subscription active. Confirmation gate fires automatically.")
+async def fn_resume_subscription(ctx, params: EmptyParams) -> ActionResult:
+    try:
+        r = await ctx.billing.resume_subscription()  # dict {plan, status, expires_at}
+    except httpx.HTTPStatusError as e:
+        return ActionResult.error(_detail(e))
+    except Exception as e:
+        return ActionResult.error(f"Could not resume: {e}")
+    return ActionResult.success(
+        data=ResumeOutcome(plan=r.get("plan"), status=r.get("status"), expires_at=r.get("expires_at")),
+        summary="Your subscription will continue — cancellation undone.",
     )
 
 
