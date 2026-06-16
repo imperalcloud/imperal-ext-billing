@@ -1,15 +1,16 @@
 {
   "manifest_schema_version": 3,
-  "sdk_version": "5.2.1",
+  "sdk_version": "5.3.0",
   "app_id": "billing",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "name": "Billing",
   "description": "Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.",
   "icon": "icon.svg",
   "actions_explicit": true,
   "system": false,
   "capabilities": [
-    "billing:read"
+    "billing:read",
+    "billing:write"
   ],
   "tools": [
     {
@@ -901,7 +902,7 @@
     },
     {
       "name": "list_payment_methods",
-      "description": "List saved payment methods (credit cards).",
+      "description": "List the user's saved payment methods (credit/debit cards): brand, last 4 digits, expiry, and which is the default.",
       "action_type": "read",
       "chain_callable": true,
       "effects": [],
@@ -912,7 +913,486 @@
         "type": "object"
       },
       "return_schema": {
-        "description": "`list_payment_methods` return shape — a single summary entity\n(kind='paymentmethods').\n\nField names mirror the REAL runtime keys verbatim (verified vs\nhandlers_payment.fn_list_payment_methods, which currently returns the wallet\nsummary {balance, plan} pending real card storage). Behavior is unchanged —\nthis only stamps the SDL canon over the existing keys. id = title =\n'payment_methods'.",
+        "$defs": {
+          "PaymentMethodCard": {
+            "description": "One saved card. Fields mirror SDK PaymentMethod verbatim\n(id/type/brand/last4/exp_month/exp_year/is_default).",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "title": "Id"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "kind": {
+                "default": "",
+                "title": "Kind",
+                "type": "string"
+              },
+              "subtitle": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Subtitle"
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Description"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Url"
+              },
+              "brand": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Brand"
+              },
+              "last4": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Last4"
+              },
+              "exp_month": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Exp Month"
+              },
+              "exp_year": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Exp Year"
+              },
+              "is_default": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Is Default"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Type"
+              }
+            },
+            "required": [
+              "id",
+              "title"
+            ],
+            "title": "PaymentMethodCard",
+            "type": "object",
+            "x-sdl": "entity"
+          }
+        },
+        "description": "sdl.EntityList of saved cards (items=[...], total).",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/PaymentMethodCard"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page"
+          },
+          "has_more": {
+            "default": false,
+            "title": "Has More",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PaymentMethodList",
+        "type": "object",
+        "x-sdl": "entity-list"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    },
+    {
+      "name": "list_payments",
+      "description": "List the user's payment history (subscriptions and token top-ups): amount, date, status, and a receipt link where available.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {},
+        "title": "EmptyParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "$defs": {
+          "PaymentRecordEntry": {
+            "description": "One payment / invoice row. Fields mirror SDK PaymentRecord verbatim.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "title": "Id"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "kind": {
+                "default": "",
+                "title": "Kind",
+                "type": "string"
+              },
+              "subtitle": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Subtitle"
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Description"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Url"
+              },
+              "payment_intent_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Payment Intent Id"
+              },
+              "amount_cents": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Amount Cents"
+              },
+              "currency": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Currency"
+              },
+              "tokens": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Tokens"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Type"
+              },
+              "created_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Created At"
+              },
+              "completed_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Completed At"
+              },
+              "receipt_url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Receipt Url"
+              }
+            },
+            "required": [
+              "id",
+              "title"
+            ],
+            "title": "PaymentRecordEntry",
+            "type": "object",
+            "x-sdl": "entity"
+          }
+        },
+        "description": "sdl.EntityList of payment / invoice rows.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/PaymentRecordEntry"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page"
+          },
+          "has_more": {
+            "default": false,
+            "title": "Has More",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PaymentHistory",
+        "type": "object",
+        "x-sdl": "entity-list"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    },
+    {
+      "name": "upgrade_plan",
+      "description": "Upgrade the user's subscription to a higher plan. The prorated difference is charged immediately to the saved default card. Confirmation gate fires automatically; the user must confirm first.",
+      "action_type": "write",
+      "chain_callable": true,
+      "effects": [
+        "update:subscription"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "plan_id": {
+            "description": "Target plan id (e.g. 'pro', 'business').",
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "period": {
+            "default": "monthly",
+            "description": "Billing period: 'monthly' (default).",
+            "title": "Period",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ],
+        "title": "ChangePlanParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "description": "Result of upgrade_plan / downgrade_plan. Mirrors SDK ChangePlanResult.",
         "properties": {
           "id": {
             "anyOf": [
@@ -982,17 +1462,17 @@
             "default": null,
             "title": "Url"
           },
-          "balance": {
+          "action": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "title": "Balance"
+            "title": "Action"
           },
           "plan": {
             "anyOf": [
@@ -1005,17 +1485,518 @@
             ],
             "default": null,
             "title": "Plan"
+          },
+          "succeeded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Succeeded"
+          },
+          "requires_action": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Requires Action"
+          },
+          "effective_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Effective At"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pending"
           }
         },
         "required": [
           "id",
           "title"
         ],
-        "title": "PaymentMethodsSummary",
+        "title": "ChangePlanOutcome",
         "type": "object",
         "x-sdl": "entity"
       },
-      "event": "",
+      "event": "billing.plan_changed",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    },
+    {
+      "name": "downgrade_plan",
+      "description": "Schedule a downgrade to a lower plan, effective at the end of the current period (no charge now; the user keeps what they paid for). Confirmation gate fires automatically; the user must confirm first.",
+      "action_type": "write",
+      "chain_callable": true,
+      "effects": [
+        "update:subscription"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "plan_id": {
+            "description": "Target plan id (e.g. 'pro', 'business').",
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "period": {
+            "default": "monthly",
+            "description": "Billing period: 'monthly' (default).",
+            "title": "Period",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id"
+        ],
+        "title": "ChangePlanParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "description": "Result of upgrade_plan / downgrade_plan. Mirrors SDK ChangePlanResult.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "kind": {
+            "default": "",
+            "title": "Kind",
+            "type": "string"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Subtitle"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Action"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Plan"
+          },
+          "succeeded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Succeeded"
+          },
+          "requires_action": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Requires Action"
+          },
+          "effective_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Effective At"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pending"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "ChangePlanOutcome",
+        "type": "object",
+        "x-sdl": "entity"
+      },
+      "event": "billing.plan_changed",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    },
+    {
+      "name": "remove_payment_method",
+      "description": "Remove a saved card. Blocked by the server if it is the only card on an active paid plan. Confirmation gate fires automatically.",
+      "action_type": "destructive",
+      "chain_callable": true,
+      "effects": [
+        "delete:payment_method"
+      ],
+      "id_projection": "pm_id",
+      "params_schema": {
+        "properties": {
+          "pm_id": {
+            "description": "Stripe payment-method id of the card to remove.",
+            "title": "Pm Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pm_id"
+        ],
+        "title": "PaymentMethodIdParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "description": "Result of remove_payment_method.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "kind": {
+            "default": "",
+            "title": "Kind",
+            "type": "string"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Subtitle"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          },
+          "pm_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pm Id"
+          },
+          "removed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Removed"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "PaymentMethodRemoved",
+        "type": "object",
+        "x-sdl": "entity"
+      },
+      "event": "billing.payment_method_removed",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    },
+    {
+      "name": "set_default_payment_method",
+      "description": "Set a saved card as the default for renewals and charges. Confirmation gate fires automatically; the user must confirm first.",
+      "action_type": "write",
+      "chain_callable": true,
+      "effects": [
+        "update:payment_method"
+      ],
+      "id_projection": "pm_id",
+      "params_schema": {
+        "properties": {
+          "pm_id": {
+            "description": "Stripe payment-method id of the card to remove.",
+            "title": "Pm Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pm_id"
+        ],
+        "title": "PaymentMethodIdParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "description": "Result of set_default_payment_method.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "kind": {
+            "default": "",
+            "title": "Kind",
+            "type": "string"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Subtitle"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          },
+          "pm_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pm Id"
+          },
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Is Default"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "PaymentMethodDefaultSet",
+        "type": "object",
+        "x-sdl": "entity"
+      },
+      "event": "billing.default_card_changed",
       "background": false,
       "long_running": false,
       "scopes": [],
