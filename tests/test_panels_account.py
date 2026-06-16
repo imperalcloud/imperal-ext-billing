@@ -269,3 +269,40 @@ async def test_subscription_status_row_reads_expired_when_past_due():
 async def test_tokens_card_has_clarifying_subtitle():
     flat = _flat(await pa.build_tokens_section(make_ctx(billing=StubBilling())))
     assert "Usage credits" in flat
+
+
+@pytest.mark.asyncio
+async def test_money_actions_carry_confirmation_prompts():
+    # Every money/state action must ask first (no instant charge on a stray click).
+    flat = _flat(await pa.build_subscription_section(
+        make_ctx(billing=StubBilling()), catalog=[{"id": "uuid-business", "name": "business", "price": 79}]))
+    assert "Cancel your plan?" in flat          # Cancel button confirm
+    assert "Renew now?" in flat                 # Renew button confirm
+    assert "Change your plan?" in flat          # Change-plan form confirm
+    tokens = _flat(await pa.build_tokens_section(make_ctx(billing=StubBilling())))
+    assert "Buy these tokens now?" in tokens     # Buy-tokens form confirm
+    assert "Save auto top-up?" in tokens         # Auto-top-up form confirm
+
+
+@pytest.mark.asyncio
+async def test_payment_methods_renders_stripe_link_pm():
+    # A non-card PM (Stripe Link) must still be shown — not hidden as "no cards".
+    from imperal_sdk.types.models import PaymentMethod
+    b = StubBilling(cards=[PaymentMethod(id="pm_link", type="link", brand="link",
+                                         last4="", exp_month=0, exp_year=0, is_default=True)])
+    flat = _flat(await pa.build_payment_methods_section(make_ctx(billing=b)))
+    assert "Stripe Link" in flat
+    assert "No saved cards" not in flat
+
+
+@pytest.mark.asyncio
+async def test_payment_methods_no_remove_on_only_card():
+    # The only payment method has NO Remove action (min-1 enforced UI-side too).
+    from imperal_sdk.types.models import PaymentMethod
+    one = StubBilling(cards=[PaymentMethod(id="pm_1", type="card", brand="visa", last4="4242",
+                                           exp_month=12, exp_year=2030, is_default=True)])
+    assert "remove_payment_method" not in _flat(await pa.build_payment_methods_section(make_ctx(billing=one)))
+    two = StubBilling(cards=[
+        PaymentMethod(id="pm_1", type="card", brand="visa", last4="4242", exp_month=12, exp_year=2030, is_default=True),
+        PaymentMethod(id="pm_2", type="card", brand="mc", last4="4444", exp_month=1, exp_year=2031, is_default=False)])
+    assert "remove_payment_method" in _flat(await pa.build_payment_methods_section(make_ctx(billing=two)))

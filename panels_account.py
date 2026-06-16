@@ -26,6 +26,16 @@ _RENEWABLE_PLANS = ("starter", "pro", "business")
 _FREE_LIKE = ("free", "unknown")
 
 
+def _confirm(action, message: str):
+    """Attach a confirmation prompt to a ui.Call so the panel asks BEFORE firing
+    it (no accidental charges/changes). The panel frontend honours a top-level
+    `confirm` on any action — the same field DList already uses. Works because
+    UIAction.to_dict() spreads its params to the action's top level, so adding it
+    to `params` surfaces it as `action.confirm` with NO SDK change needed."""
+    action.params["confirm"] = message
+    return action
+
+
 def _is_expired(expires_at) -> bool:
     """True if the ISO `expires_at` is in the past. Parse errors → not expired."""
     if not expires_at:
@@ -91,10 +101,14 @@ async def build_subscription_section(ctx, catalog=None):
     if plan_options and not pending_cancel:
         # Preselect the first option (value=) so plan_id is ALWAYS submitted — an
         # unpicked dropdown otherwise submits nothing → "plan_id Field required" 500.
-        children.append(ui.Form(
+        _change_form = ui.Form(
             children=[ui.Select(param_name="plan_id", value=plan_options[0]["value"],
                                 placeholder="Change plan…", options=plan_options)],
-            action="change_plan", submit_label="Change plan"))
+            action="change_plan", submit_label="Change plan")
+        # Confirm before changing plan (DForm asks first — see frontend confirm prop).
+        _change_form.props["confirm"] = ("Change your plan? An upgrade is charged now (prorated); "
+                                         "a downgrade applies at the end of the current period.")
+        children.append(_change_form)
     # Active paid plan → ALWAYS the three management actions together (Valentin,
     # 2026-06-16): Change plan (the dropdown above) + Cancel plan + Renew plan.
     # Each confirm-gates automatically (write/destructive). The gateway returns a
@@ -105,12 +119,15 @@ async def build_subscription_section(ctx, catalog=None):
     if pending_cancel:
         # A cancellation is already scheduled — the actionable button is Resume (undo).
         btns.append(ui.Button("Resume subscription", icon="RotateCcw", variant="primary", size="sm",
-                              on_click=ui.Call("resume_subscription")))
+                              on_click=_confirm(ui.Call("resume_subscription"),
+                                                "Resume your subscription and keep this plan?")))
     elif is_paid and sub.status == "active":
         btns.append(ui.Button("Cancel plan", icon="XCircle", variant="danger", size="sm",
-                              on_click=ui.Call("cancel_subscription")))
+                              on_click=_confirm(ui.Call("cancel_subscription"),
+                                                "Cancel your plan? It stays active until the period ends, then reverts to Free.")))
         btns.append(ui.Button("Renew plan", icon="RefreshCw", variant="primary", size="sm",
-                              on_click=ui.Call("renew_subscription")))
+                              on_click=_confirm(ui.Call("renew_subscription"),
+                                                "Renew now? Your saved payment method will be charged for a fresh period.")))
     if btns:
         children.append(ui.Stack(direction="h", gap=1, children=btns))
     return [ui.Card(
@@ -139,18 +156,32 @@ async def build_payment_methods_section(ctx):
             manage_btn,
         ]))]
     items = []
+    only_one = len(cards) <= 1
     for c in cards:
         # ListItem.actions is a list of DICTS (icon/label/on_click/confirm), NOT ui.Button nodes.
         actions = []
         if not c.is_default:
             actions.append({"label": "Make default", "icon": "Star",
                             "on_click": ui.Call("set_default_payment_method", pm_id=c.id)})
-        actions.append({"label": "Remove", "icon": "Trash2", "confirm": "Remove this card?",
-                        "on_click": ui.Call("remove_payment_method", pm_id=c.id)})
+        # Never offer Remove on the ONLY payment method — at least one must stay on
+        # file (the gateway also enforces this with a 409 backstop).
+        if not only_one:
+            actions.append({"label": "Remove", "icon": "Trash2", "confirm": "Remove this payment method?",
+                            "on_click": ui.Call("remove_payment_method", pm_id=c.id)})
+        # Card PMs show brand ···· last4 + expiry; non-card PMs (e.g. Stripe Link)
+        # expose no raw card number — label them honestly so the user still sees
+        # that a payment method IS on file.
+        if c.last4:
+            title = f"{(c.brand or 'Card').title()} ···· {c.last4}"
+            subtitle = (f"exp {c.exp_month:02d}/{c.exp_year}"
+                        if c.exp_month and c.exp_year else "Saved card")
+        else:
+            title = "Stripe Link" if (c.brand or "").lower() == "link" else (c.brand or "Payment method").title()
+            subtitle = "Saved payment method"
         items.append(ui.ListItem(
             id=c.id,   # ListItem REQUIRES id (first positional, no default)
-            title=f"{(c.brand or 'Card').title()} ···· {c.last4}",
-            subtitle=f"exp {c.exp_month:02d}/{c.exp_year}",
+            title=title,
+            subtitle=subtitle,
             badge=ui.Badge("Default", color="green") if c.is_default else None,
             actions=actions,
         ))
@@ -177,19 +208,23 @@ async def build_tokens_section(ctx):
     # buy_tokens — "tokens Field required"). Any custom amount is available by asking
     # Webbee in chat ("buy 37000 tokens"); buy_tokens(tokens:int) accepts any int.
     children.append(ui.Text("$1 per 1,000 tokens"))
-    children.append(ui.Form(
+    _buy_form = ui.Form(
         children=[
             ui.Select(param_name="tokens", value="10000", options=[
                 {"value": str(n), "label": f"{n:,} tokens — ${n // 1000}"}
                 for n in (5000, 10000, 25000, 50000, 100000, 250000)
             ]),
         ],
-        action="buy_tokens", submit_label="Buy tokens"))
+        action="buy_tokens", submit_label="Buy tokens")
+    # Confirm before charging (DForm asks first).
+    _buy_form.props["confirm"] = ("Buy these tokens now? Your saved payment method will be "
+                                  "charged at $1 per 1,000 tokens.")
+    children.append(_buy_form)
     # Auto-top-up: current state + a save form (set_auto_topup is write; confirm gate auto-fires).
     at = await ctx.billing.get_auto_topup()  # AutoTopupSettings; safe-degrades to disabled defaults
     children.append(ui.Badge("Auto top-up on" if at.enabled else "Auto top-up off",
                              color="green" if at.enabled else "gray"))
-    children.append(ui.Form(
+    _at_form = ui.Form(
         children=[
             ui.Toggle(param_name="enabled", label="Auto top-up", value=bool(at.enabled)),
             ui.Select(param_name="recharge_tokens", value=str(at.recharge_tokens or 20000), options=[
@@ -201,7 +236,11 @@ async def build_tokens_section(ctx):
                 {"value": "20", "label": "20%"},
             ]),
         ],
-        action="set_auto_topup", submit_label="Save auto top-up"))
+        action="set_auto_topup", submit_label="Save auto top-up")
+    # Confirm — enabling auto top-up means the saved card is charged automatically.
+    _at_form.props["confirm"] = ("Save auto top-up? When on, your saved payment method is charged "
+                                 "automatically whenever your balance runs low.")
+    children.append(_at_form)
     return [ui.Card(
         title="Tokens",
         subtitle="Usage credits — spent on Webbee actions; top up here.",

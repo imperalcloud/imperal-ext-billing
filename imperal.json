@@ -2,7 +2,7 @@
   "manifest_schema_version": 3,
   "sdk_version": "5.4.2",
   "app_id": "billing",
-  "version": "2.5.3",
+  "version": "2.5.4",
   "name": "Billing",
   "description": "Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.",
   "icon": "icon.svg",
