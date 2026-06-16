@@ -9,7 +9,10 @@ import httpx
 from pydantic import BaseModel, Field
 
 from app import chat, ActionResult
-from models_account import ChangePlanOutcome, PaymentMethodRemoved, PaymentMethodDefaultSet
+from models_account import (
+    ChangePlanOutcome, PaymentMethodRemoved, PaymentMethodDefaultSet,
+    TokenPurchaseOutcome,
+)
 
 log = logging.getLogger("ext.billing.money")
 
@@ -21,6 +24,10 @@ class ChangePlanParams(BaseModel):
 
 class PaymentMethodIdParams(BaseModel):
     pm_id: str = Field(description="Stripe payment-method id of the card to remove.")
+
+
+class BuyTokensParams(BaseModel):
+    tokens: int = Field(description="How many tokens to buy.")
 
 
 def _detail(e: httpx.HTTPStatusError) -> str:
@@ -119,3 +126,32 @@ async def fn_set_default_payment_method(ctx, params: PaymentMethodIdParams) -> A
         return ActionResult.error(f"Could not set default card: {e}")
     return ActionResult.success(data=PaymentMethodDefaultSet(pm_id=params.pm_id, is_default=bool(ok)),
                                 summary="Default card updated." if ok else "Default card not changed.")
+
+
+@chat.function(
+    "buy_tokens",
+    action_type="write",
+    effects=["create:topup"],
+    event="billing.topup_initiated",
+    data_model=TokenPurchaseOutcome,
+    description=("Buy more tokens. Charges the prorated price to the saved default card. "
+                 "Confirmation gate fires automatically; the user must confirm first."),
+)
+async def fn_buy_tokens(ctx, params: BuyTokensParams) -> ActionResult:
+    import account_data as ad
+    price_cents = ad.price_cents_for_tokens(params.tokens)
+    try:
+        r = await ctx.billing.topup(params.tokens, price_cents, off_session=True)
+    except httpx.HTTPStatusError as e:
+        return ActionResult.error(_detail(e))      # 402 "Add a payment method first..." surfaces here
+    except Exception as e:
+        return ActionResult.error(f"Could not buy tokens: {e}")
+    data = TokenPurchaseOutcome(tokens=params.tokens, succeeded=r.succeeded,
+                                requires_action=r.requires_action, payment_intent_id=r.payment_intent_id)
+    if r.succeeded:
+        summary = f"Added {params.tokens:,} tokens to your balance."
+    elif r.requires_action:
+        summary = "Your bank needs to confirm this payment — open Manage billing to finish."
+    else:
+        summary = f"Top-up of {params.tokens:,} tokens initiated."
+    return ActionResult.success(data=data, summary=summary)

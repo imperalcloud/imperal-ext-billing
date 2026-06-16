@@ -101,7 +101,13 @@ async def build_tokens_section(ctx):
     ]
     if pct <= 15:
         children.append(ui.Alert(title="Low balance", message="Your token balance is running low.", type="warning"))
-    # Phase 2 adds the "Buy tokens" Form here.
+    # Buy-tokens (off-session charge to the saved default card; confirm gate auto-fires).
+    children.append(ui.Form(
+        children=[ui.Select(param_name="tokens", options=[
+            {"value": "10000", "label": "10,000 ($10)"},
+            {"value": "50000", "label": "50,000 ($50)"},
+        ])],
+        action="buy_tokens", submit_label="Buy tokens"))
     return [ui.Card(title="Tokens", content=ui.Stack(direction="v", gap=2, children=children))]
 
 

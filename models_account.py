@@ -116,3 +116,19 @@ class PaymentMethodDefaultSet(sdl.Entity):
             data.setdefault("id", data.get("pm_id") or "")
             data.setdefault("title", f"Card {data.get('pm_id') or ''} set as default")
         return data
+
+
+class TokenPurchaseOutcome(sdl.Entity):
+    """Result of buy_tokens. Mirrors SDK TopupResult (off-session)."""
+    tokens: Optional[int] = None
+    succeeded: Optional[bool] = None
+    requires_action: Optional[bool] = None
+    payment_intent_id: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sdl_canon(cls, data):
+        if isinstance(data, dict):
+            data.setdefault("id", "topup")
+            data.setdefault("title", f"Top-up {data.get('tokens') or ''} tokens")
+        return data

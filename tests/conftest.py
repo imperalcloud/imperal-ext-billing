@@ -50,7 +50,7 @@ class StubBilling:
     async def change_plan(self, plan_id, period="monthly", user=None):
         self.calls.append(("change_plan", plan_id, period)); self._maybe_raise("change_plan")
         return self.change_plan_result or ChangePlanResult(action="upgrade", plan=plan_id, succeeded=True)
-    async def topup(self, tokens, price_cents, save_payment_method=True, user=None):
+    async def topup(self, tokens, price_cents, save_payment_method=True, off_session=True, user=None):
         self.calls.append(("topup", tokens, price_cents)); self._maybe_raise("topup")
         return self.topup_result or TopupResult(payment_intent_id="pi_test", client_secret="cs_test")
     async def set_default_payment_method(self, pm_id, user=None):
