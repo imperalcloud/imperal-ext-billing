@@ -34,3 +34,30 @@ def test_payment_history_is_entitylist():
                        total=1, has_more=False)
     assert h.items[0].id == "pi_1"
     assert h.total == 1
+
+# tests/test_models_account.py  (append)
+from models_account import ChangePlanOutcome, PaymentMethodRemoved, PaymentMethodDefaultSet
+
+def test_payment_method_default_set():
+    d = PaymentMethodDefaultSet(pm_id="pm_2", is_default=True)
+    assert d.id == "pm_2"
+    assert d.is_default is True
+    assert d.kind == "paymentmethoddefaultset"
+
+def test_change_plan_outcome_upgrade():
+    o = ChangePlanOutcome(action="upgrade", plan="business", succeeded=True,
+                          requires_action=False, effective_at="", pending=False)
+    assert o.id == "business"
+    assert o.kind == "changeplanoutcome"
+    assert o.succeeded is True
+
+def test_change_plan_outcome_downgrade_pending():
+    o = ChangePlanOutcome(action="downgrade", plan="pro", succeeded=False,
+                          pending=True, effective_at="2026-07-15T00:00:00")
+    assert o.pending is True
+    assert o.title.startswith("Downgrade")
+
+def test_payment_method_removed():
+    r = PaymentMethodRemoved(pm_id="pm_1", removed=True)
+    assert r.id == "pm_1"
+    assert r.removed is True

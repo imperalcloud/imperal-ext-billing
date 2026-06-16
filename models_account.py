@@ -69,3 +69,50 @@ class PaymentRecordEntry(sdl.Entity):
 class PaymentHistory(sdl.EntityList[PaymentRecordEntry]):
     """sdl.EntityList of payment / invoice rows."""
     pass
+
+
+class ChangePlanOutcome(sdl.Entity):
+    """Result of upgrade_plan / downgrade_plan. Mirrors SDK ChangePlanResult."""
+    action: Optional[str] = None
+    plan: Optional[str] = None
+    succeeded: Optional[bool] = None
+    requires_action: Optional[bool] = None
+    effective_at: Optional[str] = None
+    pending: Optional[bool] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sdl_canon(cls, data):
+        if isinstance(data, dict):
+            data.setdefault("id", data.get("plan") or "")
+            action = (data.get("action") or "change").title()
+            data.setdefault("title", f"{action} → {data.get('plan') or '?'}")
+        return data
+
+
+class PaymentMethodRemoved(sdl.Entity):
+    """Result of remove_payment_method."""
+    pm_id: Optional[str] = None
+    removed: Optional[bool] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sdl_canon(cls, data):
+        if isinstance(data, dict):
+            data.setdefault("id", data.get("pm_id") or "")
+            data.setdefault("title", f"Card {data.get('pm_id') or ''} removed")
+        return data
+
+
+class PaymentMethodDefaultSet(sdl.Entity):
+    """Result of set_default_payment_method."""
+    pm_id: Optional[str] = None
+    is_default: Optional[bool] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sdl_canon(cls, data):
+        if isinstance(data, dict):
+            data.setdefault("id", data.get("pm_id") or "")
+            data.setdefault("title", f"Card {data.get('pm_id') or ''} set as default")
+        return data
