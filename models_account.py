@@ -130,7 +130,7 @@ class TokenPurchaseOutcome(sdl.Entity):
     def _sdl_canon(cls, data):
         if isinstance(data, dict):
             data.setdefault("id", "topup")
-            data.setdefault("title", f"Top-up {data.get('tokens') or ''} tokens")
+            data.setdefault("title", f"Top-up {data.get('tokens') or ''} credits")
         return data
 
 

@@ -132,7 +132,7 @@ async def build_subscription_section(ctx, catalog=None):
         children.append(ui.Stack(direction="h", gap=1, children=btns))
     return [ui.Card(
         title="Plan & access",
-        subtitle="Your subscription = panel access, features, and your monthly token allowance + cap.",
+        subtitle="Your subscription = panel access, features, and your monthly credit allowance + cap.",
         content=ui.Stack(direction="v", gap=2, children=children))]
 
 
@@ -192,33 +192,33 @@ async def build_payment_methods_section(ctx):
 async def build_tokens_section(ctx):
     bal = await ctx.billing.get_balance()
     if ad.balance_unavailable(bal):
-        return [ui.Alert(title="Balance unavailable", message="Could not load your token balance.", type="warning")]
+        return [ui.Alert(title="Balance unavailable", message="Could not load your credit balance.", type="warning")]
     pct = int(round(100 * bal.balance / bal.cap)) if bal.cap else 0
     color = "green" if pct > 40 else ("yellow" if pct > 15 else "red")
     children = [
-        ui.Stat(label="Token balance", value=f"{bal.balance:,}", icon="Zap"),
+        ui.Stat(label="Credit balance", value=f"{bal.balance:,}", icon="Zap"),
         ui.Progress(value=pct, color=color),
-        ui.Text(f"{bal.balance:,} / {bal.cap:,} tokens"),
+        ui.Text(f"{bal.balance:,} / {bal.cap:,} credits"),
     ]
     if pct <= 15:
-        children.append(ui.Alert(title="Low balance", message="Your token balance is running low.", type="warning"))
+        children.append(ui.Alert(title="Low balance", message="Your credit balance is running low.", type="warning"))
     # Buy-tokens (off-session charge to the saved default card; confirm gate auto-fires).
     # Use a Select of presets, NOT a free-form Input: a Select's value= reliably enters
     # the form submission, whereas an untouched Input's prefill does NOT (that 500'd
     # buy_tokens — "tokens Field required"). Any custom amount is available by asking
     # Webbee in chat ("buy 37000 tokens"); buy_tokens(tokens:int) accepts any int.
-    children.append(ui.Text("$1 per 1,000 tokens"))
+    children.append(ui.Text("$1 per 1,000 credits"))
     _buy_form = ui.Form(
         children=[
             ui.Select(param_name="tokens", value="10000", options=[
-                {"value": str(n), "label": f"{n:,} tokens — ${n // 1000}"}
+                {"value": str(n), "label": f"{n:,} credits — ${n // 1000}"}
                 for n in (5000, 10000, 25000, 50000, 100000, 250000)
             ]),
         ],
-        action="buy_tokens", submit_label="Buy tokens")
+        action="buy_tokens", submit_label="Buy credits")
     # Confirm before charging (DForm asks first).
-    _buy_form.props["confirm"] = ("Buy these tokens now? Your saved payment method will be "
-                                  "charged at $1 per 1,000 tokens.")
+    _buy_form.props["confirm"] = ("Buy these credits now? Your saved payment method will be "
+                                  "charged at $1 per 1,000 credits.")
     children.append(_buy_form)
     # Auto-top-up: current state + a save form (set_auto_topup is write; confirm gate auto-fires).
     at = await ctx.billing.get_auto_topup()  # AutoTopupSettings; safe-degrades to disabled defaults
@@ -242,7 +242,7 @@ async def build_tokens_section(ctx):
                                  "automatically whenever your balance runs low.")
     children.append(_at_form)
     return [ui.Card(
-        title="Tokens",
+        title="Credits",
         subtitle="Usage credits — spent on Webbee actions; top up here.",
         content=ui.Stack(direction="v", gap=2, children=children))]
 

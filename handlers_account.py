@@ -40,7 +40,7 @@ async def fn_get_auto_topup(ctx, params: EmptyParams) -> ActionResult:
         data=AutoTopupSettingsEntity(enabled=s.enabled, threshold_pct=s.threshold_pct,
                                      recharge_tokens=s.recharge_tokens, recharge_cents=s.recharge_cents,
                                      payment_method_id=s.payment_method_id),
-        summary=(f"Auto top-up is ON: add {s.recharge_tokens:,} tokens when balance drops below {s.threshold_pct}%."
+        summary=(f"Auto top-up is ON: add {s.recharge_tokens:,} credits when balance drops below {s.threshold_pct}%."
                  if s.enabled else "Auto top-up is off."),
     )
 
@@ -60,7 +60,7 @@ async def fn_open_billing_portal(ctx, params: EmptyParams) -> ActionResult:
 class AutoTopupParams(BaseModel):
     enabled: bool = Field(description="Turn auto top-up on or off.")
     threshold_pct: int = Field(default=10, ge=1, le=50, description="Recharge when balance drops below this percent of cap.")
-    recharge_tokens: int = Field(default=20000, gt=0, description="How many tokens to add on each recharge.")
+    recharge_tokens: int = Field(default=20000, gt=0, description="How many credits to add on each recharge.")
     payment_method_id: str = Field(default="", description="Card to charge (optional; defaults to the default card).")
 
 
@@ -128,7 +128,7 @@ async def fn_renew_subscription(ctx, params: EmptyParams) -> ActionResult:
 @chat.function("set_auto_topup", action_type="write",
                effects=["update:auto_topup"], event="billing.auto_topup_changed",
                data_model=AutoTopupSettingsEntity,
-               description="Turn automatic token top-up on/off and set the low-balance threshold and recharge amount. Confirmation gate fires automatically.")
+               description="Turn automatic credit top-up on/off and set the low-balance threshold and recharge amount. Confirmation gate fires automatically.")
 async def fn_set_auto_topup(ctx, params: AutoTopupParams) -> ActionResult:
     try:
         ok = await ctx.billing.set_auto_topup(enabled=params.enabled, threshold_pct=params.threshold_pct,

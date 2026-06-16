@@ -54,7 +54,7 @@ class PaymentMethodIdParams(BaseModel):
 class BuyTokensParams(BaseModel):
     # Default so a panel submit can never 500 on a missing value; the panel uses a
     # preset Select (always submits), and Webbee chat passes an explicit amount.
-    tokens: int = Field(default=10000, gt=0, description="How many tokens to buy.")
+    tokens: int = Field(default=10000, gt=0, description="How many credits to buy.")
 
 
 def _detail(e: httpx.HTTPStatusError) -> str:
@@ -181,7 +181,7 @@ async def fn_set_default_payment_method(ctx, params: PaymentMethodIdParams) -> A
     effects=["create:topup"],
     event="billing.topup_initiated",
     data_model=TokenPurchaseOutcome,
-    description=("Buy more tokens. Charges the prorated price to the saved default card. "
+    description=("Buy more credits. Charges the prorated price to the saved default card. "
                  "Confirmation gate fires automatically; the user must confirm first."),
 )
 async def fn_buy_tokens(ctx, params: BuyTokensParams) -> ActionResult:
@@ -192,13 +192,13 @@ async def fn_buy_tokens(ctx, params: BuyTokensParams) -> ActionResult:
     except httpx.HTTPStatusError as e:
         return ActionResult.error(_detail(e))      # 402 "Add a payment method first..." surfaces here
     except Exception as e:
-        return ActionResult.error(f"Could not buy tokens: {e}")
+        return ActionResult.error(f"Could not buy credits: {e}")
     data = TokenPurchaseOutcome(tokens=params.tokens, succeeded=r.succeeded,
                                 requires_action=r.requires_action, payment_intent_id=r.payment_intent_id)
     if r.succeeded:
-        summary = f"Added {params.tokens:,} tokens to your balance."
+        summary = f"Added {params.tokens:,} credits to your balance."
     elif r.requires_action:
         summary = "Your bank needs to confirm this payment — open Manage billing to finish."
     else:
-        summary = f"Top-up of {params.tokens:,} tokens initiated."
+        summary = f"Top-up of {params.tokens:,} credits initiated."
     return ActionResult.success(data=data, summary=summary)

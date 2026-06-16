@@ -15,10 +15,10 @@ log = logging.getLogger("billing")
 
 # ─── Extension ────────────────────────────────────────────────────────── #
 
-ext = Extension("billing", version="2.5.4", capabilities=["billing:read", "billing:write"],
+ext = Extension("billing", version="2.6.0", capabilities=["billing:read", "billing:write"],
     display_name='Billing',
     description=(
-        'Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.'
+        'Billing dashboard — check credit balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.'
     ),
     icon="icon.svg",
     actions_explicit=True,
@@ -28,12 +28,12 @@ chat = ChatExtension(
     ext,
     "tool_billing_chat",
     description=(
-        "Billing assistant — check token balance, view spending history, "
-        "subscription plans, and export transactions. All actions cost 0 tokens."
+        "Billing assistant — check credit balance, view spending history, "
+        "subscription plans, and export transactions. All actions cost 0 credits."
     ),
     system_prompt=(
         "Billing module — the user's account, subscription, saved cards, "
-        "token balance, payment history, and spending analytics.\n\n"
+        "credit balance, payment history, and spending analytics.\n\n"
         "You can show the user's plan, balance, saved cards, and payment "
         "history; upgrade or downgrade their plan; and remove a saved card or "
         "set a different card as the default.\n\n"
@@ -44,7 +44,7 @@ chat = ChatExtension(
         "Read tools (no confirmation): get_balance, get_plan, "
         "list_payment_methods, list_payments, spending_report, topup_status, "
         "export_csv.\n\n"
-        "Adding a card and buying tokens are done in the billing panel."
+        "Adding a card and buying credits are done in the billing panel."
     ),
 )
 

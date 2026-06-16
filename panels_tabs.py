@@ -68,13 +68,13 @@ def _describe_transaction(tx: dict) -> str:
     ext_name = app.replace("-", " ").replace("_", " ").title() if app else ""
 
     if reason == "topup":
-        return desc or "Token top-up"
+        return desc or "Credit top-up"
     if reason == "refund":
         return f"Refund{f' — {ext_name}' if ext_name else ''}"
     if reason == "plan_credit":
-        return "Monthly plan tokens"
+        return "Monthly plan credits"
     if reason == "bonus":
-        return desc or "Bonus tokens"
+        return desc or "Bonus credits"
     if reason == "adjustment":
         return desc or "Balance adjustment"
 
@@ -156,7 +156,7 @@ async def _build_transactions(
         columns=[
             ui.DataColumn(key="time", label="When", width="20%"),
             ui.DataColumn(key="description", label="What happened", width="55%"),
-            ui.DataColumn(key="tokens", label="Tokens", width="25%"),
+            ui.DataColumn(key="tokens", label="Credits", width="25%"),
         ],
         rows=rows,
         on_row_click=ui.Call(

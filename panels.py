@@ -48,7 +48,7 @@ async def billing_sidebar(ctx, period: str = "7d", **kwargs):
         progress_label = f"{balance:,} / {cap:,}"
         progress_value = min(pct, 100)
     children.append(ui.Card(
-        title="Token Balance",
+        title="Credit Balance",
         content=ui.Stack([
             ui.Stat(label="Balance", value=f"{balance:,}", color=balance_color),
             ui.Progress(value=progress_value, label=progress_label),
@@ -70,10 +70,10 @@ async def billing_sidebar(ctx, period: str = "7d", **kwargs):
     children.append(ui.Section(
         title="Quick Stats",
         children=[ui.KeyValue(items=[
-            {"key": "Spent today", "value": f"-{spent_today:,}"},
-            {"key": f"Spent {period}", "value": f"-{stats['total_spent']:,}"},
-            {"key": "Refunded", "value": f"+{stats['total_credits']:,}"},
-            {"key": "Net cost", "value": f"-{net:,}"},
+            {"key": "Spent today", "value": f"-{spent_today:,} credits"},
+            {"key": f"Spent {period}", "value": f"-{stats['total_spent']:,} credits"},
+            {"key": "Refunded", "value": f"+{stats['total_credits']:,} credits"},
+            {"key": "Net cost", "value": f"-{net:,} credits"},
             {"key": "Actions", "value": str(action_count)},
             {"key": "Refunds", "value": str(refund_count)},
         ], columns=2)],
@@ -83,7 +83,7 @@ async def billing_sidebar(ctx, period: str = "7d", **kwargs):
     if pct <= 20 and cap > 0 and not unlimited:
         alert_type = "error" if pct <= 5 else "warn"
         children.append(ui.Alert(
-            message=f"Only {pct}% of tokens remaining ({balance:,} / {cap:,})",
+            message=f"Only {pct}% of credits remaining ({balance:,} / {cap:,})",
             type=alert_type,
         ))
 
@@ -114,7 +114,7 @@ async def billing_sidebar(ctx, period: str = "7d", **kwargs):
             ext_items.append(ui.ListItem(
                 id=entry["app_id"],
                 title=entry["app_id"],
-                subtitle=f"{entry['pct']}% · {entry['spent']:,} tokens",
+                subtitle=f"{entry['pct']}% · {entry['spent']:,} credits",
                 badge=ui.Badge(f"{entry['pct']}%", color="blue"),
                 on_click=ui.Call(
                     "__panel__dashboard",

@@ -32,7 +32,7 @@ class ExportCsvParams(BaseModel):
 @chat.function(
     "get_balance",
     action_type="read",
-    description="Get current token balance, plan name, and cap.",
+    description="Get current credit balance, plan name, and cap.",
     data_model=WalletBalance,
 )
 async def fn_get_balance(ctx, params: EmptyParams) -> ActionResult:
@@ -45,7 +45,7 @@ async def fn_get_balance(ctx, params: EmptyParams) -> ActionResult:
                 cap=info.cap,
             ),
             summary=(
-                f"Balance: {info.balance:,} tokens on the {info.plan} plan "
+                f"Balance: {info.balance:,} credits on the {info.plan} plan "
                 f"(cap: {info.cap:,})"
             ),
         )

@@ -68,5 +68,5 @@ def test_token_purchase_outcome_canon():
                              payment_intent_id="pi_x")
     assert o.id == "topup"
     assert o.kind == "tokenpurchaseoutcome"
-    assert o.title == "Top-up 10000 tokens"
+    assert o.title == "Top-up 10000 credits"
     assert o.succeeded is True

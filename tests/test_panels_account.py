@@ -165,8 +165,8 @@ async def test_tokens_section_buy_tokens_is_reliable_preset_select():
     assert "buy_tokens" in flat
     assert "Select" in _types(nodes)
     assert "'param_name': 'tokens'" in flat        # the buy form binds to tokens
-    assert "$1 per 1,000 tokens" in flat
-    assert "10,000 tokens — $10" in flat           # a preset label rendered
+    assert "$1 per 1,000 credits" in flat
+    assert "10,000 credits — $10" in flat          # a preset label rendered
     assert "Input" not in _types(nodes)            # no free-form Input in the tokens card
 
 
@@ -249,7 +249,7 @@ async def test_subscription_card_has_clarifying_subtitle():
     # The Subscription card spells out plan vs tokens so users don't conflate them.
     flat = _flat(await pa.build_subscription_section(make_ctx(billing=StubBilling()), catalog=[]))
     assert "Plan & access" in flat
-    assert "monthly token allowance" in flat
+    assert "monthly credit allowance" in flat
 
 
 @pytest.mark.asyncio
@@ -280,7 +280,7 @@ async def test_money_actions_carry_confirmation_prompts():
     assert "Renew now?" in flat                 # Renew button confirm
     assert "Change your plan?" in flat          # Change-plan form confirm
     tokens = _flat(await pa.build_tokens_section(make_ctx(billing=StubBilling())))
-    assert "Buy these tokens now?" in tokens     # Buy-tokens form confirm
+    assert "Buy these credits now?" in tokens    # Buy-credits form confirm
     assert "Save auto top-up?" in tokens         # Auto-top-up form confirm
 
 

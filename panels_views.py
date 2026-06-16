@@ -31,7 +31,7 @@ async def _build_account_summary(ctx, period: str):
     tok = features.get("tokens")
     feat_items.append(ui.ListItem(
         id="f1",
-        title=f"{tok:,} monthly tokens" if tok else "Unlimited tokens",
+        title=f"{tok:,} monthly credits" if tok else "Unlimited credits",
         icon="Check",
     ))
     ext_count = features.get("extensions")
@@ -53,7 +53,7 @@ async def _build_account_summary(ctx, period: str):
             _user_id(ctx), limit=5, period="all", tx_type="credit",
         )
         credit_items = [
-            {"title": f"+{tx['amount']:,} tokens",
+            {"title": f"+{tx['amount']:,} credits",
              "description": tx["description"] or humanize_reason(tx["reason"]),
              "time": tx["created_at"][:10], "icon": "Plus", "color": "green"}
             for tx in credits["transactions"]
@@ -67,8 +67,8 @@ async def _build_account_summary(ctx, period: str):
         ui.KeyValue(items=[
             {"key": "Plan", "value": plan.title()},
             {"key": "Status", "value": "Active"},
-            {"key": "Balance", "value": f"{wallet['balance']:,} tokens"},
-            {"key": "Monthly Cap", "value": f"{wallet['cap']:,} tokens"},
+            {"key": "Balance", "value": f"{wallet['balance']:,} credits"},
+            {"key": "Monthly Cap", "value": f"{wallet['cap']:,} credits"},
         ]),
         ui.Divider(),
         ui.Header("Plan Features", level=4),
@@ -121,22 +121,22 @@ async def _build_transaction_detail(event_id: str, period: str, tz: str = "UTC")
 
     # Human-readable header
     if amount < 0:
-        title = f"Spent {abs(amount)} tokens"
+        title = f"Spent {abs(amount)} credits"
         badge = ui.Badge("Spending", color="red")
         what = humanize_tool(tool, app_id)
         ext_name = app_id.replace("-", " ").replace("_", " ").title() if app_id else "System"
     elif reason == "topup":
-        title = f"Added {amount} tokens"
+        title = f"Added {amount} credits"
         badge = ui.Badge("Top-up", color="green")
-        what = entry.get("description") or "Token purchase"
+        what = entry.get("description") or "Credit purchase"
         ext_name = "Billing"
     elif reason == "refund":
-        title = f"Refunded {amount} tokens"
+        title = f"Refunded {amount} credits"
         badge = ui.Badge("Refund", color="yellow")
         what = entry.get("description") or "Refund"
         ext_name = app_id.replace("-", " ").title() if app_id else "System"
     else:
-        title = f"Received {amount} tokens"
+        title = f"Received {amount} credits"
         badge = ui.Badge(humanize_reason(reason), color="green")
         what = entry.get("description") or humanize_reason(reason)
         ext_name = "System"
@@ -153,7 +153,7 @@ async def _build_transaction_detail(event_id: str, period: str, tz: str = "UTC")
             {"key": "When", "value": time_str},
             {"key": "What", "value": what},
             {"key": "Extension", "value": ext_name},
-            {"key": "Tokens", "value": f"{amount:+,}"},
+            {"key": "Credits", "value": f"{amount:+,}"},
         ], columns=2),
     ]
 
@@ -163,9 +163,9 @@ async def _build_transaction_detail(event_id: str, period: str, tz: str = "UTC")
             ui.Divider(),
             ui.Section(title="Cost Breakdown", children=[
                 ui.KeyValue(items=[
-                    {"key": "Extension fee", "value": f"{entry['base_price']} tokens"},
-                    {"key": "Platform fee", "value": f"{entry['platform_fee']} tokens"},
-                    {"key": "Total", "value": f"{abs(amount)} tokens"},
+                    {"key": "Extension fee", "value": f"{entry['base_price']} credits"},
+                    {"key": "Platform fee", "value": f"{entry['platform_fee']} credits"},
+                    {"key": "Total", "value": f"{abs(amount)} credits"},
                 ], columns=3),
                 ui.Text(
                     f"Model: {entry.get('model', '—')} ({entry.get('model_tier', '—')} tier)",
@@ -259,9 +259,9 @@ async def _build_extension_stats(uid: str, app_id: str, period: str):
             ui.Header("Pricing", level=4),
             ui.KeyValue(items=[
                 {"key": "Mode", "value": ext_pricing["mode"]},
-                {"key": "Read", "value": f"{ext_pricing['read']} tokens"},
-                {"key": "Write", "value": f"{ext_pricing['write']} tokens"},
-                {"key": "Destructive", "value": f"{ext_pricing['destructive']} tokens"},
+                {"key": "Read", "value": f"{ext_pricing['read']} credits"},
+                {"key": "Write", "value": f"{ext_pricing['write']} credits"},
+                {"key": "Destructive", "value": f"{ext_pricing['destructive']} credits"},
             ]),
         ])
 
