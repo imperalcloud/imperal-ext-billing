@@ -1,0 +1,118 @@
+"""Account-first billing panel sections (Layer 2d). Pure builders returning
+ui.* node lists. Reads via ctx.billing (safe-degrading) + account_data. Card
+capture (Add card / invoices via Stripe Customer Portal) + Buy-tokens are added
+in Phase 2 (panels_account_capture wiring)."""
+import logging
+from imperal_sdk import ui
+from app import _user_id
+import account_data as ad
+
+log = logging.getLogger("ext.billing.panels_account")
+
+_PLAN_ORDER = {"free": 0, "starter": 1, "pro": 2, "business": 3, "enterprise": 4}
+
+
+async def build_subscription_section(ctx, catalog=None):
+    sub = await ctx.billing.get_subscription()
+    if ad.subscription_unavailable(sub):
+        return [ui.Alert(title="Billing unavailable", message="Could not load your subscription. Try again shortly.", type="warning")]
+    children = [
+        ui.Stack(direction="h", gap=1, children=[
+            ui.Badge(sub.plan.title(), color="blue"),
+            ui.Badge(sub.status, color="green" if sub.status == "active" else "yellow"),
+        ]),
+        ui.KeyValue(items=[
+            {"key": "Plan", "value": sub.plan.title()},
+            {"key": "Status", "value": sub.status},
+            {"key": "Renews", "value": sub.expires_at or "—"},
+        ]),
+    ]
+    # Upgrade/downgrade controls vs the catalog (charges off-session against the saved default card).
+    cat = catalog if catalog is not None else await ad.fetch_plan_catalog(ctx)
+    cur_rank = _PLAN_ORDER.get((sub.plan or "").lower(), 0)
+    btns = []
+    for plan in cat:
+        pid = plan.get("id") or plan.get("name") or ""
+        rank = _PLAN_ORDER.get(pid.lower(), -1)
+        if rank < 0 or pid.lower() == (sub.plan or "").lower():
+            continue
+        if rank > cur_rank:
+            btns.append(ui.Button(label=f"Upgrade to {pid.title()}", icon="ArrowUpCircle",
+                                  variant="primary", size="sm",
+                                  on_click=ui.Call("upgrade_plan", plan_id=pid, period="monthly")))
+        else:
+            btns.append(ui.Button(label=f"Downgrade to {pid.title()}", icon="ArrowDownCircle",
+                                  variant="secondary", size="sm",
+                                  on_click=ui.Call("downgrade_plan", plan_id=pid, period="monthly")))
+    if btns:
+        children.append(ui.Stack(direction="h", gap=1, children=btns))
+    return [ui.Card(title="Subscription", content=ui.Stack(direction="v", gap=2, children=children))]
+
+
+async def build_payment_methods_section(ctx):
+    cards = await ctx.billing.list_payment_methods()  # safe-degrades to []
+    if not cards:
+        return [ui.Card(title="Payment methods", content=ui.Stack(direction="v", gap=2, children=[
+            ui.Empty(message="No saved cards yet", icon="CreditCard"),
+            # Phase 2 replaces this Text with the Stripe Customer Portal "Manage cards" button.
+            ui.Text("Add a card from the Manage cards button (added with the portal in Phase 2)."),
+        ]))]
+    items = []
+    for c in cards:
+        # ListItem.actions is a list of DICTS (icon/label/on_click/confirm), NOT ui.Button nodes.
+        actions = []
+        if not c.is_default:
+            actions.append({"label": "Make default", "icon": "Star",
+                            "on_click": ui.Call("set_default_payment_method", pm_id=c.id)})
+        actions.append({"label": "Remove", "icon": "Trash2", "confirm": "Remove this card?",
+                        "on_click": ui.Call("remove_payment_method", pm_id=c.id)})
+        items.append(ui.ListItem(
+            id=c.id,   # ListItem REQUIRES id (first positional, no default)
+            title=f"{(c.brand or 'Card').title()} ···· {c.last4}",
+            subtitle=f"exp {c.exp_month:02d}/{c.exp_year}",
+            badge=ui.Badge("Default", color="green") if c.is_default else None,
+            actions=actions,
+        ))
+    return [ui.Card(title="Payment methods", content=ui.List(items=items))]
+
+
+async def build_tokens_section(ctx):
+    bal = await ctx.billing.get_balance()
+    if ad.balance_unavailable(bal):
+        return [ui.Alert(title="Balance unavailable", message="Could not load your token balance.", type="warning")]
+    pct = int(round(100 * bal.balance / bal.cap)) if bal.cap else 0
+    color = "green" if pct > 40 else ("yellow" if pct > 15 else "red")
+    children = [
+        ui.Stat(label="Token balance", value=f"{bal.balance:,}", icon="Zap"),
+        ui.Progress(value=pct, color=color),
+        ui.Text(f"{bal.balance:,} / {bal.cap:,} tokens"),
+    ]
+    if pct <= 15:
+        children.append(ui.Alert(title="Low balance", message="Your token balance is running low.", type="warning"))
+    # Phase 2 adds the "Buy tokens" Form here.
+    return [ui.Card(title="Tokens", content=ui.Stack(direction="v", gap=2, children=children))]
+
+
+async def build_history_section(ctx):
+    pays = await ctx.billing.list_payments(limit=50, offset=0)  # safe-degrades to []
+    if not pays:
+        return [ui.Card(title="Payment history", content=ui.Empty(message="No payments yet", icon="Receipt"))]
+    items = []
+    for p in pays:
+        amt = f"${(p.amount_cents or 0) / 100:,.2f}"
+        sub = f"{(p.type or 'payment').title()} · {p.status} · {(p.created_at or '')[:10]}"
+        # ListItem has no free-form child slot; the receipt opens via on_click (new tab).
+        on_click = ui.Open(url=p.receipt_url) if p.receipt_url else None
+        items.append(ui.ListItem(id=p.payment_intent_id or amt, title=amt, subtitle=sub, on_click=on_click))
+    return [ui.Card(title="Payment history", content=ui.List(items=items))]
+
+
+async def build_profile_section(ctx):
+    prof = ad.read_billing_profile(ctx)
+    return [ui.Card(title="Billing profile", content=ui.KeyValue(items=[
+        {"key": "Name", "value": prof["name"] or "—"},
+        {"key": "Company", "value": prof["company"] or "—"},
+        {"key": "VAT / GST", "value": prof["vat"] or "—"},
+        {"key": "Country", "value": prof["country"] or "—"},
+    ]))]
+    # Phase 2 adds an editable ui.Form(action="update_billing_profile", …).
