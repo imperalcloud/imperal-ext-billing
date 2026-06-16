@@ -57,3 +57,9 @@ async def test_payment_methods_empty_state():
 async def test_tokens_section_shows_progress():
     types = _types(await pa.build_tokens_section(make_ctx(billing=StubBilling())))
     assert "Progress" in types or "Stat" in types
+
+
+@pytest.mark.asyncio
+async def test_payment_methods_has_portal_button():
+    flat = _flat(await pa.build_payment_methods_section(make_ctx(billing=StubBilling(cards=[]))))
+    assert "billing.stripe.com" in flat   # ui.Open(url=portal_url) wired in (StubBilling portal_url)
