@@ -82,18 +82,19 @@ async def _build_account_summary(ctx, period: str):
             ui.Timeline(items=credit_items),
         ])
 
+    # 2d: the real top-up / upgrade controls now live in the account-first
+    # section — link there instead of the old disabled "Soon" buttons.
     children.extend([
         ui.Divider(),
-        ui.Stack(direction="v", gap=1, children=[
-            ui.Stack(direction="h", gap=1, children=[
-                ui.Button("Top Up", icon="CreditCard", disabled=True),
-                ui.Badge("Soon", color="gray"),
-            ]),
-            ui.Stack(direction="h", gap=1, children=[
-                ui.Button("Upgrade Plan", icon="ArrowUpCircle", disabled=True),
-                ui.Badge("Soon", color="gray"),
-            ]),
-        ]),
+        ui.Button(
+            "Manage billing", icon="CreditCard", variant="primary",
+            on_click=ui.Call(
+                "__panel__dashboard",
+                section="account", tab="overview", period=period,
+                view="", event_id="", app_id="",
+                filter_app="", filter_type="", offset=0,
+            ),
+        ),
     ])
 
     return ui.Stack(children=children, gap=2)
