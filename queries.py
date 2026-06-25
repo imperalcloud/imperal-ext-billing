@@ -55,6 +55,25 @@ async def _get_session() -> AsyncSession:
     return _session_factory()
 
 
+async def get_app_display_names() -> dict:
+    """Canonical app_id -> display_name map from `developer_apps` (the SAME table
+    the marketplace reads — single source of truth). Used so the billing UI shows
+    real extension names, not raw app_ids. Empty/missing names are omitted; the
+    caller falls back to a humanized app_id."""
+    session = await _get_session()
+    try:
+        r = await session.execute(text(
+            "SELECT app_id, display_name FROM developer_apps "
+            "WHERE display_name IS NOT NULL AND display_name <> ''"
+        ))
+        return {row[0]: row[1] for row in r.fetchall()}
+    except Exception as e:
+        log.warning("get_app_display_names: %s", e)
+        return {}
+    finally:
+        await session.close()
+
+
 def _period_clause(period: str) -> str:
     """Return SQL WHERE clause fragment for time filtering."""
     days = PERIOD_DAYS.get(period)

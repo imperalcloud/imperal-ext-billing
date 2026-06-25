@@ -210,7 +210,8 @@ async def _build_extension_stats(uid: str, app_id: str, period: str):
     stats = await queries.get_extension_stats(uid, app_id, period)
     config = await get_pricing_config()
 
-    ext_name = app_id.replace("-", " ").replace("_", " ").title()
+    _ext_cfg = next((e for e in config["extensions"] if e["app_id"] == app_id), None)
+    ext_name = (_ext_cfg or {}).get("name") or app_id.replace("-", " ").replace("_", " ").title()
 
     children = [
         _back_button(period),

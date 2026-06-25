@@ -189,7 +189,7 @@ async def _build_pricing():
         ),
         ui.DataTable(
             columns=[
-                ui.DataColumn(key="app_id", label="Extension", width=170),
+                ui.DataColumn(key="name", label="Extension", width=170),
                 ui.DataColumn(key="mode", label="Mode", width=120),
                 ui.DataColumn(key="fn_count", label="Functions", width=90),
                 ui.DataColumn(key="price_range", label="Base price (cr)", width=130),

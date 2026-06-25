@@ -15,7 +15,7 @@ log = logging.getLogger("billing")
 
 # ─── Extension ────────────────────────────────────────────────────────── #
 
-ext = Extension("billing", version="2.6.1", capabilities=["billing:read", "billing:write"],
+ext = Extension("billing", version="2.6.2", capabilities=["billing:read", "billing:write"],
     display_name='Billing',
     description=(
         'Billing dashboard — check credit balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.'
@@ -154,6 +154,16 @@ async def get_pricing_config() -> dict:
             "fn_count": len(functions),
             "price_range": price_range,
         })
+
+    # Real display names from the canonical source (developer_apps — same as marketplace);
+    # fall back to a humanized app_id for system apps not in the table.
+    try:
+        import queries
+        names = await queries.get_app_display_names()
+    except Exception:
+        names = {}
+    for e in extensions:
+        e["name"] = names.get(e["app_id"]) or e["app_id"].replace("-", " ").replace("_", " ").title()
 
     platform_fees = await get_platform_fees()
     return {"extensions": extensions, "platform_fees": platform_fees}
