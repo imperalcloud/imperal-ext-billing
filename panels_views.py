@@ -254,15 +254,30 @@ async def _build_extension_stats(uid: str, app_id: str, period: str):
         (e for e in config["extensions"] if e["app_id"] == app_id), None,
     )
     if ext_pricing:
+        pricing_children = [ui.KeyValue(items=[
+            {"key": "Mode", "value": ext_pricing["mode"]},
+            {"key": "Priced functions", "value": str(ext_pricing["fn_count"])},
+            {"key": "Base price",
+             "value": "free" if ext_pricing["mode"] == "free"
+                      else f"{ext_pricing['price_range']} credits"},
+        ])]
+        fns = ext_pricing.get("functions") or {}
+        if fns:
+            fn_rows = [
+                {"fn": humanize_tool(name, app_id), "price": price}
+                for name, price in sorted(fns.items(), key=lambda kv: kv[1], reverse=True)
+            ]
+            pricing_children.append(ui.DataTable(
+                columns=[
+                    ui.DataColumn(key="fn", label="Function", width=200),
+                    ui.DataColumn(key="price", label="Base (cr)", width=90),
+                ],
+                rows=fn_rows,
+            ))
         children.extend([
             ui.Divider(),
             ui.Header("Pricing", level=4),
-            ui.KeyValue(items=[
-                {"key": "Mode", "value": ext_pricing["mode"]},
-                {"key": "Read", "value": f"{ext_pricing['read']} credits"},
-                {"key": "Write", "value": f"{ext_pricing['write']} credits"},
-                {"key": "Destructive", "value": f"{ext_pricing['destructive']} credits"},
-            ]),
+            *pricing_children,
         ])
 
     return ui.Stack(children=children, gap=2)

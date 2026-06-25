@@ -176,33 +176,40 @@ async def _build_transactions(
 
 async def _build_pricing():
     config = await get_pricing_config()
+    pf = config["platform_fees"]
 
     return ui.Stack(children=[
         ui.Header("Extension Pricing", level=3),
+        ui.Text(
+            "Per-action cost = function base price + platform fee. The base price is "
+            "the extension's own per-function price (shared with the developer per their "
+            "revenue split); the platform fee below is Imperal's LLM-resale markup (kept in "
+            "full). Open an extension in Spending → by extension to see every function's price.",
+            variant="caption",
+        ),
         ui.DataTable(
             columns=[
-                ui.DataColumn(key="app_id", label="Extension", width=150),
+                ui.DataColumn(key="app_id", label="Extension", width=170),
                 ui.DataColumn(key="mode", label="Mode", width=120),
-                ui.DataColumn(key="read", label="Read", width=80),
-                ui.DataColumn(key="write", label="Write", width=80),
-                ui.DataColumn(key="destructive", label="Destructive", width=100),
+                ui.DataColumn(key="fn_count", label="Functions", width=90),
+                ui.DataColumn(key="price_range", label="Base price (cr)", width=130),
             ],
             rows=config["extensions"],
         ),
         ui.Divider(),
-        ui.Header("Model Rates", level=3),
+        ui.Header("Platform fee — per model tier", level=3),
         ui.DataTable(
             columns=[
-                ui.DataColumn(key="model", label="Model", width=180),
-                ui.DataColumn(key="tier", label="Tier", width=120),
-                ui.DataColumn(key="platform_fee", label="Platform Fee", width=120),
+                ui.DataColumn(key="tier", label="Model tier", width=170),
+                ui.DataColumn(key="fee", label="Fee (cr)", width=120),
             ],
-            rows=config["model_rates"],
+            rows=[{"tier": t.title(), "fee": pf.get(t, "—")}
+                  for t in ("economy", "standard", "premium")],
         ),
         ui.Alert(
             title="Guaranteed Pricing",
-            message="Total cost = base_price + platform_fee. "
-                    "Price is shown before execution. No surprises.",
+            message="Total cost = base price + platform fee, shown before execution. "
+                    "No surprises. BYOLLM users pay no platform fee.",
             type="info",
         ),
     ], gap=2)

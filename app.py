@@ -15,7 +15,7 @@ log = logging.getLogger("billing")
 
 # ─── Extension ────────────────────────────────────────────────────────── #
 
-ext = Extension("billing", version="2.6.0", capabilities=["billing:read", "billing:write"],
+ext = Extension("billing", version="2.6.1", capabilities=["billing:read", "billing:write"],
     display_name='Billing',
     description=(
         'Billing dashboard — check credit balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.'
@@ -112,7 +112,15 @@ async def get_wallet(ctx) -> dict:
 
 
 async def get_pricing_config() -> dict:
-    """Get all extension pricing + model rates from Redis."""
+    """Live extension pricing (the kernel resolver's own source) + platform fee per tier.
+
+    Source of truth = the per-extension hashes ``imperal:billing:pricing:{app_id}``
+    written by the gateway on deploy (``mode`` + a per-function price map) and read by
+    the kernel for every billed action. We surface the REAL data: the per-function
+    base prices and the platform fee per model tier (Imperal's LLM-resale markup) —
+    NOT the legacy ``price_read/write/destructive`` fields, which nothing writes
+    anymore (they used to render a meaningless hardcoded 1/5/10 fallback).
+    """
     r = _get_redis()
     ext_keys = await r.keys("imperal:billing:pricing:*")
     extensions = []
@@ -120,28 +128,58 @@ async def get_pricing_config() -> dict:
         app_id = key.split(":")[-1]
         data = await r.hgetall(key)
         mode = data.get("mode", "category")
+
+        functions: dict[str, int] = {}
+        raw_fn = data.get("functions")
+        if raw_fn:
+            try:
+                functions = {str(k): int(v) for k, v in json.loads(raw_fn).items()}
+            except (json.JSONDecodeError, TypeError, ValueError, AttributeError):
+                functions = {}
+
+        prices = sorted(functions.values())
+        if mode == "free":
+            price_range = "free"
+        elif prices:
+            lo, hi = prices[0], prices[-1]
+            price_range = str(lo) if lo == hi else f"{lo}–{hi}"
+        else:
+            # per_function with no map → kernel falls back to CATEGORY_DEFAULTS (1/5/10)
+            price_range = "default 1/5/10"
+
         extensions.append({
             "app_id": app_id,
             "mode": mode,
-            "read": int(data.get("price_read", 1)) if mode != "free" else 0,
-            "write": int(data.get("price_write", 5)) if mode != "free" else 0,
-            "destructive": int(data.get("price_destructive", 10)) if mode != "free" else 0,
+            "functions": functions,
+            "fn_count": len(functions),
+            "price_range": price_range,
         })
 
-    model_rates = []
-    raw = await r.hgetall("imperal:billing:model_rates")
-    for model_name, val in sorted(raw.items()):
-        try:
-            info = json.loads(val)
-            model_rates.append({
-                "model": model_name,
-                "tier": info.get("tier", "economy"),
-                "platform_fee": info.get("fee", 2),
-            })
-        except (json.JSONDecodeError, TypeError):
-            pass
+    platform_fees = await get_platform_fees()
+    return {"extensions": extensions, "platform_fees": platform_fees}
 
-    return {"extensions": extensions, "model_rates": model_rates}
+
+async def get_platform_fees() -> dict:
+    """Per-tier platform fee (Imperal's LLM-resale markup), live from the gateway
+    ``/v1/internal/billing/platform-fees`` (unified_config = single source of truth,
+    same endpoint the kernel reads). Falls back to the kernel defaults on any miss."""
+    fallback = {"economy": 60, "standard": 250, "premium": 2200}
+    try:
+        import httpx
+        gw = os.environ.get("IMPERAL_GATEWAY_URL", "http://104.224.88.155:8085")
+        token = os.environ.get("AUTH_SERVICE_TOKEN", "")
+        async with httpx.AsyncClient(base_url=gw, timeout=5) as c:
+            resp = await c.get("/v1/internal/billing/platform-fees",
+                               headers={"X-Service-Token": token})
+            if resp.status_code == 200:
+                data = resp.json() or {}
+                fees = {t: int(data[t]) for t in ("economy", "standard", "premium")
+                        if isinstance(data.get(t), (int, float))}
+                if fees:
+                    return {**fallback, **fees}
+    except Exception:
+        pass
+    return fallback
 
 
 
