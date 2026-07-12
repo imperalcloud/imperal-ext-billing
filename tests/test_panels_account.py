@@ -306,3 +306,42 @@ async def test_payment_methods_no_remove_on_only_card():
         PaymentMethod(id="pm_1", type="card", brand="visa", last4="4242", exp_month=12, exp_year=2030, is_default=True),
         PaymentMethod(id="pm_2", type="card", brand="mc", last4="4444", exp_month=1, exp_year=2031, is_default=False)])
     assert "remove_payment_method" in _flat(await pa.build_payment_methods_section(make_ctx(billing=two)))
+
+
+@pytest.mark.asyncio
+async def test_subscription_section_free_user_gets_subscribe_buttons():
+    # A free user's FIRST subscription must go through checkout (card capture) —
+    # the section emits `__checkout__` buttons (the panel shell opens the native
+    # Stripe modal), NEVER the change_plan form (the gateway 409s it).
+    cat = [{"id": "uuid-pro", "name": "pro", "price": 29},
+           {"id": "uuid-business", "name": "business", "price": 79},
+           {"id": "uuid-free", "name": "free", "price": 0}]
+    b = StubBilling(subscription=SubscriptionInfo(plan="free", status="active"))
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=cat))
+    assert "__checkout__" in flat
+    assert "Subscribe to Pro" in flat and "Subscribe to Business" in flat
+    assert "change_plan" not in flat          # the 409 path is gone for free users
+    assert "cancel_subscription" not in flat  # nothing to cancel
+
+
+@pytest.mark.asyncio
+async def test_subscription_section_free_subscribe_carries_plan_slug():
+    # ui.Call params spread to the action top level — the shell reads
+    # plan/period directly; value must be the SLUG (gateway /checkout takes a
+    # plan name, not a catalog UUID).
+    cat = [{"id": "uuid-pro", "name": "pro", "price": 29}]
+    b = StubBilling(subscription=SubscriptionInfo(plan="free", status="active"))
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=cat))
+    assert "'plan': 'pro'" in flat or '"plan": "pro"' in flat
+    assert "monthly" in flat
+
+
+@pytest.mark.asyncio
+async def test_subscription_section_paid_user_keeps_change_plan_no_checkout():
+    cat = [{"id": "uuid-pro", "name": "pro", "price": 29},
+           {"id": "uuid-business", "name": "business", "price": 79}]
+    b = StubBilling(subscription=SubscriptionInfo(
+        plan="pro", status="active", expires_at="2099-01-01T00:00:00"))
+    flat = _flat(await pa.build_subscription_section(make_ctx(billing=b), catalog=cat))
+    assert "change_plan" in flat
+    assert "__checkout__" not in flat

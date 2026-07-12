@@ -1,8 +1,8 @@
 {
   "manifest_schema_version": 3,
-  "sdk_version": "5.4.2",
+  "sdk_version": "5.9.3",
   "app_id": "billing",
-  "version": "2.6.2",
+  "version": "2.7.0",
   "name": "Billing",
   "description": "Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.",
   "icon": "icon.svg",
@@ -26,7 +26,7 @@
     },
     {
       "name": "get_balance",
-      "description": "Get current token balance, plan name, and cap.",
+      "description": "Get current credit balance, plan name, and cap.",
       "action_type": "read",
       "chain_callable": true,
       "effects": [],
@@ -2191,7 +2191,7 @@
     },
     {
       "name": "buy_tokens",
-      "description": "Buy more tokens. Charges the prorated price to the saved default card. Confirmation gate fires automatically; the user must confirm first.",
+      "description": "Buy more credits. Charges the prorated price to the saved default card. Confirmation gate fires automatically; the user must confirm first.",
       "action_type": "write",
       "chain_callable": true,
       "effects": [
@@ -2202,7 +2202,7 @@
         "properties": {
           "tokens": {
             "default": 10000,
-            "description": "How many tokens to buy.",
+            "description": "How many credits to buy.",
             "exclusiveMinimum": 0,
             "title": "Tokens",
             "type": "integer"
@@ -3171,7 +3171,7 @@
     },
     {
       "name": "set_auto_topup",
-      "description": "Turn automatic token top-up on/off and set the low-balance threshold and recharge amount. Confirmation gate fires automatically.",
+      "description": "Turn automatic credit top-up on/off and set the low-balance threshold and recharge amount. Confirmation gate fires automatically.",
       "action_type": "write",
       "chain_callable": true,
       "effects": [
@@ -3195,7 +3195,7 @@
           },
           "recharge_tokens": {
             "default": 20000,
-            "description": "How many tokens to add on each recharge.",
+            "description": "How many credits to add on each recharge.",
             "exclusiveMinimum": 0,
             "title": "Recharge Tokens",
             "type": "integer"
@@ -3547,5 +3547,19 @@
     "on_install": {
       "signature": "(ctx)"
     }
-  }
+  },
+  "panels": [
+    {
+      "panel_id": "sidebar",
+      "slot": "left",
+      "title": "Billing",
+      "tree": {}
+    },
+    {
+      "panel_id": "dashboard",
+      "slot": "center",
+      "title": "Billing",
+      "tree": {}
+    }
+  ]
 }

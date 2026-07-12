@@ -81,34 +81,60 @@ async def build_subscription_section(ctx, catalog=None):
         children.append(ui.Alert(
             type="warning", title="Cancellation scheduled",
             message=f"Your {sub.plan} plan is set to cancel on {sub.expires_at}. Resume to keep it."))
-    # ONE plan-change control: a dropdown of the OTHER plans submitting to change_plan.
-    # The gateway decides upgrade-vs-downgrade by price. Option value = the catalog
-    # `id` (a UUID, which change_plan resolves by Plan.id); label = plan name + price.
+    # Plan controls split by WHO the user is (mirrors the gateway's change-plan
+    # contract — a first subscription MUST go through checkout, change-plan 409s):
+    #   * free/unknown (no paid sub)  -> Subscribe buttons emitting `__checkout__`
+    #     (the panel shell intercepts it and opens the native Stripe checkout
+    #     modal — card capture happens in the browser, never here);
+    #   * everyone else (paid/contract) -> the change-plan dropdown, unchanged
+    #     (the gateway charges a prorated upgrade / schedules a downgrade;
+    #     enterprise keeps all three controls per Valentin 2026-06-16).
     cat = catalog if catalog is not None else await ad.fetch_plan_catalog(ctx)
-    selectable = sorted(
-        (p for p in cat
-         if (p.get("name") or "").lower() in _SELF_SERVICE_PLANS
-         and (p.get("name") or "").lower() != (sub.plan or "").lower()),
-        key=lambda p: p.get("price") or 0,
-    )
-    plan_options = [
-        {"value": p.get("id") or p.get("name"),
-         "label": f"{(p.get('name') or '').title()} — ${p.get('price')}/mo"}
-        for p in selectable
-    ]
-    # Plan-change stays available whether the plan is active or lapsed — only a
-    # pending cancellation hides it (Resume is the one action that makes sense there).
-    if plan_options and not pending_cancel:
-        # Preselect the first option (value=) so plan_id is ALWAYS submitted — an
-        # unpicked dropdown otherwise submits nothing → "plan_id Field required" 500.
-        _change_form = ui.Form(
-            children=[ui.Select(param_name="plan_id", value=plan_options[0]["value"],
-                                placeholder="Change plan…", options=plan_options)],
-            action="change_plan", submit_label="Change plan")
-        # Confirm before changing plan (DForm asks first — see frontend confirm prop).
-        _change_form.props["confirm"] = ("Change your plan? An upgrade is charged now (prorated); "
-                                         "a downgrade applies at the end of the current period.")
-        children.append(_change_form)
+    if not is_paid and not pending_cancel:
+        # First subscription: one button per self-service plan. ui.Call params
+        # spread to the action's top level, so the shell reads plan/period
+        # directly. No confirm layer — the checkout modal itself shows the
+        # price and takes the card; nothing is charged by this click alone.
+        _subscribable = sorted(
+            (p for p in cat if (p.get("name") or "").lower() in _SELF_SERVICE_PLANS),
+            key=lambda p: p.get("price") or 0,
+        )
+        sub_btns = [
+            ui.Button(
+                f"Subscribe to {(p.get('name') or '').title()} — ${p.get('price')}/mo",
+                icon="Zap", variant="primary", size="sm",
+                on_click=ui.Call("__checkout__", plan=(p.get("name") or "").lower(),
+                                 period="monthly"))
+            for p in _subscribable
+        ]
+        if sub_btns:
+            children.append(ui.Text("Pick a plan — checkout takes one card step:"))
+            children.append(ui.Stack(direction="h", gap=1, children=sub_btns))
+    else:
+        selectable = sorted(
+            (p for p in cat
+             if (p.get("name") or "").lower() in _SELF_SERVICE_PLANS
+             and (p.get("name") or "").lower() != (sub.plan or "").lower()),
+            key=lambda p: p.get("price") or 0,
+        )
+        plan_options = [
+            {"value": p.get("id") or p.get("name"),
+             "label": f"{(p.get('name') or '').title()} — ${p.get('price')}/mo"}
+            for p in selectable
+        ]
+        # Plan-change stays available whether the plan is active or lapsed — only a
+        # pending cancellation hides it (Resume is the one action that makes sense there).
+        if plan_options and not pending_cancel:
+            # Preselect the first option (value=) so plan_id is ALWAYS submitted — an
+            # unpicked dropdown otherwise submits nothing → "plan_id Field required" 500.
+            _change_form = ui.Form(
+                children=[ui.Select(param_name="plan_id", value=plan_options[0]["value"],
+                                    placeholder="Change plan…", options=plan_options)],
+                action="change_plan", submit_label="Change plan")
+            # Confirm before changing plan (DForm asks first — see frontend confirm prop).
+            _change_form.props["confirm"] = ("Change your plan? An upgrade is charged now (prorated); "
+                                             "a downgrade applies at the end of the current period.")
+            children.append(_change_form)
     # Active paid plan → ALWAYS the three management actions together (Valentin,
     # 2026-06-16): Change plan (the dropdown above) + Cancel plan + Renew plan.
     # Each confirm-gates automatically (write/destructive). The gateway returns a

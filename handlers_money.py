@@ -73,6 +73,14 @@ async def _change_plan(ctx, plan_id: str, period: str) -> ActionResult:
     except httpx.HTTPStatusError as e:
         msg = _detail(e)
         log.warning("change_plan %s failed: %s", plan_id, msg)
+        if "from checkout" in msg:
+            # Gateway 409: no active paid plan to change FROM — a first
+            # subscription needs the card-capture checkout, which lives in the
+            # billing panel (the Subscribe button opens it in the browser).
+            return ActionResult.error(
+                "You don't have a paid plan yet, so there's nothing to change — "
+                "a first subscription takes one quick card step in checkout. "
+                "Open the Billing panel and press Subscribe on the plan you want.")
         return ActionResult.error(msg)
     except Exception as e:
         return ActionResult.error(f"Could not change plan: {e}")
