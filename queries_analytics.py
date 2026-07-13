@@ -216,6 +216,11 @@ async def get_llm_costs_history(
         log.warning("get_llm_costs_history SQL error: %s", e)
         return {"actions": [], "total_cost_usd": 0.0, "total_tokens": 0,
                 "byollm_count": 0, "total_actions": 0}
+    finally:
+        # Without this the pooled connection stays checked out until cyclic
+        # GC hard-terminates it (pool_size=3 — a few LLM Costs tab views
+        # could exhaust the pool). Siblings above already close in finally.
+        await session.close()
 
     items = []
     total_cost_usd = 0.0
