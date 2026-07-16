@@ -16,6 +16,13 @@ log = logging.getLogger("billing")
 # ─── Extension ────────────────────────────────────────────────────────── #
 
 ext = Extension("billing", version="2.7.1", capabilities=["billing:read", "billing:write"],
+    system=True,  # Imperal-owned platform app (mirrors admin/marketplace) —
+    # first-party, hidden from Marketplace search, auto-installed for every
+    # user. Was missing here (same latent gap found+fixed on developer-ext,
+    # 2026-07-16) even though developer_apps.system was hand-seeded to 1 in
+    # the DB; deploy_app now self-heals `system` FROM this manifest field on
+    # every deploy, so without this declaration the next billing deploy
+    # would have silently flipped the DB flag back to 0.
     display_name='Billing',
     description=(
         'Billing dashboard — check credit balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.'

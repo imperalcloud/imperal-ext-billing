@@ -7,7 +7,7 @@
   "description": "Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.",
   "icon": "icon.svg",
   "actions_explicit": true,
-  "system": false,
+  "system": true,
   "capabilities": [
     "billing:read",
     "billing:write"
