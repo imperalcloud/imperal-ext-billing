@@ -1,6 +1,6 @@
 {
   "manifest_schema_version": 3,
-  "sdk_version": "5.9.3",
+  "sdk_version": "5.9.13",
   "app_id": "billing",
   "version": "2.7.1",
   "name": "Billing",
@@ -3553,13 +3553,22 @@
       "panel_id": "sidebar",
       "slot": "left",
       "title": "Billing",
-      "tree": {}
+      "tree": {},
+      "icon": "Wallet",
+      "refresh": "on_event:billing.deduct,billing.credit",
+      "center_overlay": false,
+      "default_width": 320,
+      "min_width": 260,
+      "max_width": 420
     },
     {
       "panel_id": "dashboard",
       "slot": "center",
       "title": "Billing",
-      "tree": {}
+      "tree": {},
+      "icon": "BarChart3",
+      "refresh": "on_event:billing.deduct,billing.credit",
+      "center_overlay": true
     }
   ]
 }
