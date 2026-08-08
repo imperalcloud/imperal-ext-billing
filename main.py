@@ -17,6 +17,7 @@ from app import ext, chat  # noqa: F401
 import handlers           # noqa: F401
 import handlers_payment   # noqa: F401
 import handlers_money     # noqa: F401  (registers guarded write/destructive tools)
+import handlers_bulk      # noqa: F401  (bulk card removal — many saved cards, one call)
 import handlers_account   # noqa: F401  (registers parity tools: plans/auto-topup/portal/cancel/profile)
 import skeleton           # noqa: F401
 import panels             # noqa: F401

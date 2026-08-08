@@ -15,7 +15,7 @@ log = logging.getLogger("billing")
 
 # ─── Extension ────────────────────────────────────────────────────────── #
 
-ext = Extension("billing", version="2.7.1", capabilities=["billing:read", "billing:write"],
+ext = Extension("billing", version="2.8.0", capabilities=["billing:read", "billing:write"],
     system=True,  # Imperal-owned platform app (mirrors admin/marketplace) —
     # first-party, hidden from Marketplace search, auto-installed for every
     # user. Was missing here (same latent gap found+fixed on developer-ext,
@@ -51,6 +51,14 @@ chat = ChatExtension(
         "Read tools (no confirmation): get_balance, get_plan, "
         "list_payment_methods, list_payments, spending_report, topup_status, "
         "export_csv.\n\n"
+        "SEVERAL CARDS AT ONCE: when the user names more than one card in a "
+        "single breath (\"remove the two old visas\", \"delete 4242 and 5555\"), "
+        "call bulk_remove_payment_methods ONCE with every card in pm_ids — "
+        "never loop remove_payment_method, which fires one confirmation per "
+        "card. Entries may be a pm_id, the last four digits, or \"visa 4242\"; "
+        "an ambiguous term is reported with its candidates rather than "
+        "guessed. Partial success is reported per card: lead with the cards "
+        "that WERE removed, then name the ones the server refused.\n\n"
         "Adding a card and buying credits are done in the billing panel."
     ),
 )
