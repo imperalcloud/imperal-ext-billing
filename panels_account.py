@@ -65,17 +65,48 @@ async def build_subscription_section(ctx, catalog=None):
                     else ui.Badge(sub.status, color="green" if sub.status == "active" else "yellow"))
     # When lapsed the Status line must agree with the (red) badge, not the raw "active".
     status_value = "Expired" if lapsed else sub.status
+    # HOW this subscription settles — stated by the gateway, never guessed here
+    # (2026-08-13, contract: auth-gw app/billing/billing_mode.py). A contract or
+    # comped seat must never be shown card-shaped copy: it is not on a card.
+    mode = (getattr(sub, "billing_mode", "card") or "card").lower()
+    off_stripe = mode in ("manual", "free")
+    kv = [
+        {"key": "Plan", "value": sub.plan.title()},
+        {"key": "Status", "value": status_value},
+    ]
+    if mode == "manual":
+        kv.append({"key": "Billing", "value": "By invoice / agreement (no card needed)"})
+    elif mode == "free":
+        kv.append({"key": "Billing", "value": "Included — nothing to pay"})
+    # "Renews" is a card promise. For an off-Stripe seat the date is a period
+    # end the owner controls, and a blank date genuinely means "no end date" —
+    # saying "—" there would read as broken rather than as unlimited.
+    if off_stripe:
+        kv.append({"key": "Period ends", "value": sub.expires_at or "No end date"})
+    else:
+        kv.append({"key": "Renews", "value": sub.expires_at or "—"})
     children = [
         ui.Stack(direction="h", gap=1, children=[
             ui.Badge(sub.plan.title(), color="blue"),
             status_badge,
         ]),
-        ui.KeyValue(items=[
-            {"key": "Plan", "value": sub.plan.title()},
-            {"key": "Status", "value": status_value},
-            {"key": "Renews", "value": sub.expires_at or "—"},
-        ]),
+        ui.KeyValue(items=kv),
     ]
+    if off_stripe:
+        note = (getattr(sub, "billing_note", None) or "").strip()
+        children.append(ui.Alert(
+            type="info",
+            title=("Billed by agreement" if mode == "manual" else "Complimentary access"),
+            message=(
+                (f"{note} — no card is required on this account."
+                 if note else
+                 "This account is settled directly with us, not by card — "
+                 "there is nothing to add here.")
+                if mode == "manual" else
+                (f"{note} — no payment is required on this account."
+                 if note else
+                 "Your access is on the house — no card, no charges.")
+            )))
     # Scheduled-cancellation banner — surfaces the effective date and a Resume action.
     if pending_cancel:
         children.append(ui.Alert(
@@ -163,6 +194,19 @@ async def build_subscription_section(ctx, catalog=None):
 
 
 async def build_payment_methods_section(ctx):
+    # Does this account settle by card at all? (2026-08-13) A 'manual'
+    # (invoice/agreement) or 'free' seat does not, so the whole card section must
+    # stop implying otherwise: "No saved cards yet" reads as a demand, and it is
+    # what left contract customers re-entering a card that was never the point.
+    off_stripe = False
+    try:
+        _sub = await ctx.billing.get_subscription()
+        off_stripe = (getattr(_sub, "billing_mode", "card") or "card").lower() in ("manual", "free")
+    except Exception as e:
+        # Never let a billing read failure hide card management from someone who
+        # DOES pay by card — fall back to the card-shaped view.
+        log.warning("payment methods: subscription read failed: %s", e)
+
     # Stripe Customer Portal session for card capture / invoices (per-request URL;
     # create_billing_portal_session RAISES on error → fall back to an info Alert).
     portal_url = ""
@@ -177,6 +221,15 @@ async def build_payment_methods_section(ctx):
 
     cards = await ctx.billing.list_payment_methods()  # safe-degrades to []
     if not cards:
+        # No card AND none needed: say so plainly instead of showing an empty
+        # slot that looks like an unfinished setup step.
+        if off_stripe:
+            return [ui.Card(title="Payment methods", content=ui.Stack(direction="v", gap=2, children=[
+                ui.Alert(type="info", title="No card needed",
+                         message="This account is billed by agreement, so there is nothing to "
+                                 "set up here. You can still add a card if you prefer to use one."),
+                manage_btn,
+            ]))]
         return [ui.Card(title="Payment methods", content=ui.Stack(direction="v", gap=2, children=[
             ui.Empty(message="No saved cards yet", icon="CreditCard"),
             manage_btn,
