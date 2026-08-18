@@ -6,7 +6,7 @@ import io
 
 from pydantic import BaseModel, Field
 
-from app import chat, ActionResult, _user_id
+from app import chat, ActionResult, _user_id, get_user_usage
 from models import (
     WalletBalance, PlanSubscription, MeterUsage, SpendingReport, CsvExport,
 )
@@ -83,33 +83,58 @@ async def fn_get_plan(ctx, params: EmptyParams) -> ActionResult:
 )
 async def fn_spending_report(ctx, params: EmptyParams) -> ActionResult:
     try:
-        limits = await ctx.billing.check_limits()
-        usage_lines = [
-            f"  {meter}: {count:,}" for meter, count in limits.usage.items()
-        ]
+        # Usage comes from the gateway's on-demand internal endpoint, NOT from
+        # ctx.billing.check_limits(): with a service token the SDK resolves
+        # check_limits() to /internal/user-limits/{uid}, which answers
+        # {plan, limits} with no usage at all -- which is why this report read
+        # "No usage recorded" while metering was perfectly healthy. That
+        # endpoint is on the kernel's per-turn hot path and is deliberately
+        # kept small, so usage lives on its own endpoint instead.
+        plan = ""
+        usage: dict = {}
+        plan_limits: dict = {}
+        exceeded: list = []
+
+        report = await get_user_usage(_user_id(ctx))
+        if report:
+            plan = report.get("plan") or ""
+            usage = report.get("usage") or {}
+            plan_limits = report.get("limits") or {}
+            exceeded = report.get("exceeded") or []
+        else:
+            # Degrade to the SDK path rather than failing the read outright.
+            limits = await ctx.billing.check_limits()
+            plan = limits.plan
+            usage = limits.usage or {}
+            plan_limits = limits.limits or {}
+            exceeded = limits.exceeded or []
+
+        # Biggest spend first — a 343-meter report is only useful if the
+        # meaningful rows are at the top.
+        ordered = sorted(usage.items(), key=lambda kv: kv[1], reverse=True)
+
+        usage_lines = [f"  {meter}: {count:,}" for meter, count in ordered]
         usage_text = "\n".join(usage_lines) if usage_lines else "  No usage recorded"
-        exceeded_text = (
-            f" | Exceeded: {', '.join(limits.exceeded)}" if limits.exceeded else ""
-        )
+        exceeded_text = f" | Exceeded: {', '.join(exceeded)}" if exceeded else ""
         # SDL: one MeterUsage item per meter (entity-list), plan/exceeded as
         # list-level scalars. NO legacy {usage{},limits{}} wrapper.
         items = [
             {
                 "meter": meter,
                 "count": count,
-                "limit": limits.limits.get(meter),
-                "exceeded": meter in limits.exceeded,
+                "limit": plan_limits.get(meter),
+                "exceeded": meter in exceeded,
             }
-            for meter, count in limits.usage.items()
+            for meter, count in ordered
         ]
         return ActionResult.success(
             data=SpendingReport(
                 items=[MeterUsage(**it) for it in items],
                 total=len(items),
-                plan=limits.plan,
-                exceeded=limits.exceeded,
+                plan=plan,
+                exceeded=exceeded,
             ),
-            summary=f"Plan: {limits.plan}{exceeded_text}\nUsage:\n{usage_text}",
+            summary=f"Plan: {plan}{exceeded_text}\nUsage:\n{usage_text}",
         )
     except Exception as e:
         return ActionResult.error(f"Failed to fetch spending report: {e}")

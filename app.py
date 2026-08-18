@@ -207,6 +207,36 @@ async def get_platform_fees() -> dict:
     return fallback
 
 
+async def get_user_usage(user_id: str) -> dict:
+    """Full metered usage for one user, live from the gateway
+    ``/v1/billing/internal/user-usage/{user_id}``.
+
+    Why not ``ctx.billing.check_limits()``: for a service token the SDK
+    resolves check_limits() to ``/internal/user-limits/{uid}``, which returns
+    ``{plan, limits}`` only -- no usage at all. That endpoint sits on the
+    kernel's per-turn hot path, so it is deliberately kept tiny and must NOT
+    be widened with per-tool usage (the heaviest live account carries ~22 KB
+    of it). The gateway therefore exposes usage on its own on-demand endpoint,
+    and this is the caller.
+
+    Returns ``{plan, limits, usage, exceeded}``; ``{}`` on any failure so a
+    reporting read can degrade instead of erroring.
+    """
+    try:
+        import httpx
+        gw = os.environ.get("IMPERAL_GATEWAY_URL", "http://104.224.88.155:8085")
+        token = os.environ.get("AUTH_SERVICE_TOKEN", "")
+        async with httpx.AsyncClient(base_url=gw, timeout=5) as c:
+            resp = await c.get(f"/v1/billing/internal/user-usage/{user_id}",
+                               headers={"X-Service-Token": token})
+            if resp.status_code == 200:
+                data = resp.json()
+                if isinstance(data, dict):
+                    return data
+    except Exception as e:
+        log.warning("user usage fetch failed for %s: %s", user_id, e)
+    return {}
+
 
 # ─── Timezone Helper ──────────────────────────────────────────────────── #
 
