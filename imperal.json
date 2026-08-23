@@ -1,6 +1,6 @@
 {
   "manifest_schema_version": 3,
-  "sdk_version": "5.9.13",
+  "sdk_version": "5.11.0",
   "app_id": "billing",
   "version": "2.8.0",
   "name": "Billing",
@@ -2346,6 +2346,83 @@
       "owner_chat_tool": "tool_billing_chat"
     },
     {
+      "name": "bulk_remove_payment_methods",
+      "description": "Remove SEVERAL saved cards in one call. Each entry may be a payment-method id, the last four digits, or 'visa 4242'. Use whenever the user names more than one card ('remove the two old visas') instead of calling remove_payment_method repeatedly. The server still blocks removing the only card on an active paid plan.",
+      "action_type": "destructive",
+      "chain_callable": true,
+      "effects": [
+        "delete:payment_method"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "description": "Target SEVERAL saved cards at once.",
+        "properties": {
+          "pm_ids": {
+            "description": "The cards to remove. Each entry may be a Stripe payment-method id, the card's last four digits ('4242'), or brand + last four ('visa 4242'). Pass EVERY card the user named in ONE call; do not loop the single-card tool.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 25,
+            "minItems": 1,
+            "title": "Pm Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pm_ids"
+        ],
+        "title": "BulkPaymentMethodsParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "additionalProperties": true,
+        "description": "Uniform outcome shape for bulk billing actions.",
+        "properties": {
+          "action": {
+            "default": "",
+            "title": "Action",
+            "type": "string"
+          },
+          "succeeded": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Succeeded",
+            "type": "array"
+          },
+          "failed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "success_count": {
+            "default": 0,
+            "title": "Success Count",
+            "type": "integer"
+          },
+          "failure_count": {
+            "default": 0,
+            "title": "Failure Count",
+            "type": "integer"
+          }
+        },
+        "title": "BulkBillingReceipt",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "tool_billing_chat"
+    },
+    {
       "name": "list_plans",
       "description": "List the subscription plans the user can choose from, with prices and what each includes.",
       "action_type": "read",
@@ -3548,6 +3625,15 @@
       "signature": "(ctx)"
     }
   },
+  "tray": [
+    {
+      "tray_id": "balance",
+      "icon": "Coins",
+      "tooltip": "Credit balance",
+      "zone": "status",
+      "order": 40
+    }
+  ],
   "panels": [
     {
       "panel_id": "sidebar",

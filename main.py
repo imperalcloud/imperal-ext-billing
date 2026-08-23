@@ -7,6 +7,7 @@ sys.path.insert(0, _dir)
 for _m in [k for k in sys.modules if k in (
     "app", "handlers", "handlers_payment", "handlers_money", "handlers_account", "skeleton",
     "queries", "queries_analytics", "models_account", "account_data",
+    "tray",
     "panels", "panels_account", "panels_dashboard", "panels_tabs", "panels_views",
     "panels_center", "panels_right",
 )]:
@@ -20,6 +21,7 @@ import handlers_money     # noqa: F401  (registers guarded write/destructive too
 import handlers_bulk      # noqa: F401  (bulk card removal — many saved cards, one call)
 import handlers_account   # noqa: F401  (registers parity tools: plans/auto-topup/portal/cancel/profile)
 import skeleton           # noqa: F401
+import tray               # noqa: F401  (system tray item: credit balance)
 import panels             # noqa: F401
 import panels_dashboard   # noqa: F401
 import panels_tabs        # noqa: F401
