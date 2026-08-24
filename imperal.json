@@ -3633,7 +3633,7 @@
       "zone": "status",
       "order": 40,
       "badge_style": "inline",
-      "icon_color": "muted"
+      "icon_color": "success"
     }
   ],
   "panels": [

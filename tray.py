@@ -34,6 +34,17 @@ def _tone(balance: int, cap: int) -> str:
     The thresholds mirror the skeleton's `alert_level` exactly (empty /
     critical <5% / low <20%) so a user cannot see a calm grey pill in the tray
     while the assistant is telling them their balance is critical.
+
+    HEALTHY IS GREEN, NOT GREY. The built-in counter this replaced drew a
+    healthy balance in emerald and only cooled toward amber and red as it
+    fell; returning "gray" here made the glyph beside the digits go out
+    entirely, because 'gray' is an alias for `muted` and `muted` is dimmer
+    than the strip's own ink rather than equal to it. The tray then read as
+    black-and-white for every user whose balance was fine -- which is most of
+    them, most of the time -- and the at-a-glance signal was gone.
+
+    The thresholds themselves are untouched on purpose: they are shared with
+    the skeleton, and a second ladder of cut-offs would be free to drift.
     """
     if balance <= 0:
         return "red"
@@ -41,7 +52,7 @@ def _tone(balance: int, cap: int) -> str:
         return "red"
     if cap > 0 and balance < cap * 0.20:
         return "yellow"
-    return "gray"
+    return "green"
 
 
 def _compact(value: int) -> str:
@@ -77,12 +88,17 @@ def _compact(value: int) -> str:
     # figures, exactly as the built-in counter drew it. On a corner disc a
     # value like "1.2M" is unreadable.
     badge_style="inline",
-    # RESTING colour: a healthy balance is unremarkable, and the built-in drew
-    # it in the strip's own muted ink. This is what the item looks like before
-    # its handler has read anything -- including the first frame of a page
-    # load, which is why declaring it matters even though the live answer
-    # below almost always replaces it.
-    icon_color="muted",
+    # RESTING colour: the state the item is in nearly all of the time, which
+    # for a balance is "healthy" -- and healthy is GREEN, the colour the
+    # built-in counter used. This is what the item looks like before its
+    # handler has read anything: the first frame of a page load, and every
+    # frame of a load the tray serves from memory.
+    #
+    # It was "muted", on the reasoning that a healthy balance is unremarkable.
+    # That reasoning was wrong twice over: `muted` is DIMMER than the strip's
+    # ink, not equal to it, and the resting colour is not a rare fallback --
+    # it is what most users see most of the time.
+    icon_color="success",
 )
 async def tray_balance(ctx, **kwargs) -> ui.UINode:
     """The credit balance, as a pill that turns red before the user runs out."""
