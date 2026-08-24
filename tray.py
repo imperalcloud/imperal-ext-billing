@@ -62,13 +62,27 @@ def _compact(value: int) -> str:
 
 @ext.tray(
     "balance",
-    icon="Coins",
+    # "credits", not "Coins": the platform's own credit mark, asked for BY
+    # NAME through the host's icon registry. "Coins" was a lucide look-alike
+    # picked because a name for the real glyph did not exist yet -- so the
+    # number stayed right while the mark silently changed under the user.
+    icon="credits",
     tooltip="Credit balance",
     zone="status",
     # The built-in it replaces sat at order 40, and keeping that number means
     # the tray looks identical after the move. A strip that reshuffles itself
     # because an app was re-implemented is a regression the user can see.
     order=40,
+    # A balance is READ, not cleared: it belongs beside the glyph in tabular
+    # figures, exactly as the built-in counter drew it. On a corner disc a
+    # value like "1.2M" is unreadable.
+    badge_style="inline",
+    # RESTING colour: a healthy balance is unremarkable, and the built-in drew
+    # it in the strip's own muted ink. This is what the item looks like before
+    # its handler has read anything -- including the first frame of a page
+    # load, which is why declaring it matters even though the live answer
+    # below almost always replaces it.
+    icon_color="muted",
 )
 async def tray_balance(ctx, **kwargs) -> ui.UINode:
     """The credit balance, as a pill that turns red before the user runs out."""
@@ -83,6 +97,17 @@ async def tray_balance(ctx, **kwargs) -> ui.UINode:
         log.warning("tray: balance fetch failed: %s", exc, exc_info=True)
         return ui.TrayResponse()
 
+    tone = _tone(balance, cap)
+
     return ui.TrayResponse(
-        badge=ui.Badge(value=_compact(balance), color=_tone(balance, cap)),
+        badge=ui.Badge(value=_compact(balance), color=tone),
+        # The GLYPH takes the SAME tone as the number, from the SAME function.
+        # Deriving it here rather than re-deciding the thresholds is the whole
+        # point: a second ladder of cut-offs would be free to drift out of
+        # step with the first, and the day it did, the mark would say "calm"
+        # while the digits beside it said "empty". One reading, one colour.
+        #
+        # The badge vocabulary ('red'/'yellow'/'gray') is accepted for the
+        # glyph as an alias, so no translation table is needed here either.
+        icon_color=tone,
     )
