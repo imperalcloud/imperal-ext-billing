@@ -1,10 +1,10 @@
 {
   "manifest_schema_version": 3,
-  "sdk_version": "5.11.0",
+  "sdk_version": "5.13.0",
   "app_id": "billing",
   "version": "2.8.0",
   "name": "Billing",
-  "description": "Billing dashboard — check token balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.",
+  "description": "Billing dashboard — check credit balance, review spending history, manage subscription plan, view payment transactions, export usage reports for accounting.",
   "icon": "icon.svg",
   "actions_explicit": true,
   "system": true,
@@ -3628,10 +3628,12 @@
   "tray": [
     {
       "tray_id": "balance",
-      "icon": "Coins",
+      "icon": "credits",
       "tooltip": "Credit balance",
       "zone": "status",
-      "order": 40
+      "order": 40,
+      "badge_style": "inline",
+      "icon_color": "muted"
     }
   ],
   "panels": [
