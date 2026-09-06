@@ -5,10 +5,10 @@ import sys, os
 _dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _dir)
 for _m in [k for k in sys.modules if k in (
-    "app", "handlers", "handlers_payment", "handlers_money", "handlers_account", "skeleton",
-    "queries", "queries_analytics", "models_account", "account_data",
+    "app", "handlers", "handlers_payment", "handlers_money", "handlers_bulk", "handlers_account", "skeleton",
+    "queries", "queries_analytics", "models_account", "account_data", "formatters",
     "tray",
-    "panels", "panels_account", "panels_dashboard", "panels_tabs", "panels_views",
+    "panels", "panels_account", "panels_account_sections", "panels_dashboard", "panels_tabs", "panels_views",
     "panels_center", "panels_right",
 )]:
     del sys.modules[_m]

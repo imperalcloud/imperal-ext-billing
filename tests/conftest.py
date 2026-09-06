@@ -64,7 +64,8 @@ class StubBilling:
         self.calls.append(("remove_payment_method", pm_id)); self._maybe_raise("remove_payment_method"); return True
     async def create_setup_intent(self, user=None):
         self.calls.append(("create_setup_intent",)); self._maybe_raise("create_setup_intent")
-        return SetupIntentResult(client_secret="cs_setup", publishable_key="pk_test")
+        client_secret = "cs_setup"
+        return SetupIntentResult(client_secret=client_secret, publishable_key="pk_test")
     async def create_billing_portal_session(self, user=None):  # Phase 2 (prereq adds this)
         self.calls.append(("create_billing_portal_session",)); self._maybe_raise("create_billing_portal_session")
         return self.portal_url
