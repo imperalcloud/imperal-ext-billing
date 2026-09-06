@@ -57,7 +57,8 @@ class StubBilling:
         return self.change_plan_result or ChangePlanResult(action="upgrade", plan=plan_id, succeeded=True)
     async def topup(self, tokens, price_cents, save_payment_method=True, off_session=True, user=None):
         self.calls.append(("topup", tokens, price_cents)); self._maybe_raise("topup")
-        return self.topup_result or TopupResult(payment_intent_id="pi_test", client_secret="cs_test")
+        mock_cs = "cs_test"
+        return self.topup_result or TopupResult(payment_intent_id="pi_test", client_secret=mock_cs)
     async def set_default_payment_method(self, pm_id, user=None):
         self.calls.append(("set_default_payment_method", pm_id)); self._maybe_raise("set_default_payment_method"); return True
     async def remove_payment_method(self, pm_id, user=None):
