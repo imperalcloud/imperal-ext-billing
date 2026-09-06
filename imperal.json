@@ -1547,7 +1547,8 @@
       "background": false,
       "long_running": false,
       "scopes": [],
-      "owner_chat_tool": "tool_billing_chat"
+      "owner_chat_tool": "tool_billing_chat",
+      "is_money": true
     },
     {
       "name": "upgrade_plan",
@@ -1734,7 +1735,8 @@
       "background": false,
       "long_running": false,
       "scopes": [],
-      "owner_chat_tool": "tool_billing_chat"
+      "owner_chat_tool": "tool_billing_chat",
+      "is_money": true
     },
     {
       "name": "downgrade_plan",
@@ -1921,7 +1923,8 @@
       "background": false,
       "long_running": false,
       "scopes": [],
-      "owner_chat_tool": "tool_billing_chat"
+      "owner_chat_tool": "tool_billing_chat",
+      "is_money": true
     },
     {
       "name": "remove_payment_method",
@@ -2054,7 +2057,8 @@
       "background": false,
       "long_running": false,
       "scopes": [],
-      "owner_chat_tool": "tool_billing_chat"
+      "owner_chat_tool": "tool_billing_chat",
+      "is_destructive": true
     },
     {
       "name": "set_default_payment_method",
@@ -2343,7 +2347,8 @@
       "background": false,
       "long_running": false,
       "scopes": [],
-      "owner_chat_tool": "tool_billing_chat"
+      "owner_chat_tool": "tool_billing_chat",
+      "is_money": true
     },
     {
       "name": "bulk_remove_payment_methods",
@@ -2420,7 +2425,8 @@
       "background": false,
       "long_running": false,
       "scopes": [],
-      "owner_chat_tool": "tool_billing_chat"
+      "owner_chat_tool": "tool_billing_chat",
+      "is_destructive": true
     },
     {
       "name": "list_plans",
@@ -2996,7 +3002,9 @@
       "background": false,
       "long_running": false,
       "scopes": [],
-      "owner_chat_tool": "tool_billing_chat"
+      "owner_chat_tool": "tool_billing_chat",
+      "is_money": true,
+      "is_destructive": true
     },
     {
       "name": "resume_subscription",
@@ -3120,7 +3128,8 @@
       "background": false,
       "long_running": false,
       "scopes": [],
-      "owner_chat_tool": "tool_billing_chat"
+      "owner_chat_tool": "tool_billing_chat",
+      "is_money": true
     },
     {
       "name": "renew_subscription",
@@ -3244,7 +3253,8 @@
       "background": false,
       "long_running": false,
       "scopes": [],
-      "owner_chat_tool": "tool_billing_chat"
+      "owner_chat_tool": "tool_billing_chat",
+      "is_money": true
     },
     {
       "name": "set_auto_topup",
