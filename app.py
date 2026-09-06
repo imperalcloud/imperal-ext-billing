@@ -240,14 +240,6 @@ async def get_user_usage(user_id: str) -> dict:
 
 # ─── Timezone Helper ──────────────────────────────────────────────────── #
 
-_tz_cache: dict[str, str] = {}
-
-
-async def get_user_timezone(ctx) -> str:
-    """Get user's timezone from Auth GW profile. Cached per session."""
-    uid = _user_id(ctx)
-    if uid in _tz_cache:
-        return _tz_cache[uid]
 from formatters import (  # noqa: F401
     format_time, format_time_full, humanize_tool, humanize_reason, get_user_timezone,
 )

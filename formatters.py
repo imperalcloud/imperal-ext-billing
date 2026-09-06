@@ -12,6 +12,9 @@ _tz_cache: dict[str, str] = {}
 
 async def get_user_timezone(uid: str) -> str:
     """Fetch user's timezone from auth-gw (cached)."""
+    # Defensive: if a Context object was passed instead of uid string
+    if not isinstance(uid, str):
+        uid = getattr(getattr(uid, "user", None), "imperal_id", "") or ""
     if not uid:
         return "UTC"
     if uid in _tz_cache:
