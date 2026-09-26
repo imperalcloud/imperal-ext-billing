@@ -80,7 +80,7 @@ async def billing_dashboard(
                 ),
             ),
             ui.Button(
-                "Detailed Analytics", icon="BarChart3", size="sm",
+                "Detailed Analytics", icon="TrendingUp", size="sm",
                 variant="primary" if current_section == "analytics" else "ghost",
                 on_click=ui.Call(
                     "__panel__dashboard", section="analytics", tab="overview",
@@ -90,33 +90,48 @@ async def billing_dashboard(
             ),
         ], sticky=True)
 
-        # ── Section 1: Overview & Plan (Clean 2-Column Grid) ──
+        # ── Section 1: Overview & Plan (Focused 2-Column Grid) ──
         if current_section == "account":
             sub_sections = await pa.build_subscription_section(ctx)
             token_sections = await pa.build_tokens_section(ctx)
-            pm_sections = await pa.build_payment_methods_section(ctx)
-            prof_sections = await pa.build_profile_section(ctx)
 
-            # Row 1: Plan & Subscription (Col 1) + Credits & Top-Up (Col 2)
-            grid_row1 = ui.Grid(columns=2, gap=3, children=[*sub_sections, *token_sections])
-
-            # Row 2: Payment Methods (Col 1) + Billing Profile (Col 2)
-            grid_row2 = ui.Grid(columns=2, gap=3, children=[*pm_sections, *prof_sections])
+            # Clean 2-column view: Plan & Access (Col 1) + Credits & Gas (Col 2)
+            grid = ui.Grid(columns=2, gap=3, children=[*sub_sections, *token_sections])
 
             return ui.Stack(
                 direction="v",
                 gap=3,
-                children=[grid_row1, grid_row2],
+                children=[grid],
                 className="p-3 max-w-5xl mx-auto"
             )
 
-        # ── Section 2: Invoices & Receipts Tab ──
+        # ── Section 2: Payment Methods Dedicated View ──
+        if current_section == "payment_methods":
+            pm_sections = await pa.build_payment_methods_section(ctx)
+            return ui.Stack(
+                direction="v",
+                gap=3,
+                children=[*pm_sections],
+                className="p-3 max-w-4xl mx-auto"
+            )
+
+        # ── Section 3: Invoices & Receipts Dedicated View ──
         if current_section == "invoices":
             hist_sections = await pa.build_history_section(ctx)
             return ui.Stack(
                 direction="v",
                 gap=3,
                 children=[*hist_sections],
+                className="p-3 max-w-4xl mx-auto"
+            )
+
+        # ── Section 4: Billing Profile Dedicated View ──
+        if current_section == "profile":
+            prof_sections = await pa.build_profile_section(ctx)
+            return ui.Stack(
+                direction="v",
+                gap=3,
+                children=[*prof_sections],
                 className="p-3 max-w-4xl mx-auto"
             )
 
@@ -133,7 +148,7 @@ async def billing_dashboard(
         # Analytics Sub-tabs
         tab_buttons = []
         for tid, label, icon in [
-            ("overview", "Usage Overview", "BarChart3"),
+            ("overview", "Usage Overview", "TrendingUp"),
             ("transactions", "Activity Log", "ArrowRightLeft"),
             ("llm_costs", "LLM Costs", "Cpu"),
             ("pricing", "Pricing Table", "Tag"),

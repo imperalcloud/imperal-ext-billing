@@ -10,8 +10,10 @@ log = logging.getLogger("billing")
 
 _SECTIONS = [
     {"id": "account", "label": "Overview & Plan", "icon": "LayoutDashboard"},
+    {"id": "payment_methods", "label": "Payment Methods", "icon": "CreditCard"},
     {"id": "invoices", "label": "Invoices & Receipts", "icon": "Receipt"},
-    {"id": "analytics", "label": "Usage Analytics", "icon": "BarChart3"},
+    {"id": "profile", "label": "Billing Profile", "icon": "Building2"},
+    {"id": "analytics", "label": "Usage Analytics", "icon": "TrendingUp"},
 ]
 
 
