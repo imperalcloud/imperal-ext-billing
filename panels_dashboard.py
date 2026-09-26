@@ -71,7 +71,7 @@ async def billing_dashboard(
         # ── Top-level section switch: Account (default) vs Analytics ──
         section_bar = ui.Stack(direction="h", gap=1, children=[
             ui.Button(
-                "Account", icon="User", size="sm",
+                "My Plan & Wallet", icon="Wallet", size="sm",
                 variant="primary" if section == "account" else "ghost",
                 on_click=ui.Call(
                     "__panel__dashboard", section="account", tab="overview",
@@ -80,7 +80,7 @@ async def billing_dashboard(
                 ),
             ),
             ui.Button(
-                "Analytics", icon="BarChart3", size="sm",
+                "Detailed Analytics", icon="BarChart3", size="sm",
                 variant="primary" if section == "analytics" else "ghost",
                 on_click=ui.Call(
                     "__panel__dashboard", section="analytics", tab="overview",

@@ -186,6 +186,8 @@ async def build_subscription_section(ctx, catalog=None):
                               on_click=_confirm(ui.Call("renew_subscription"),
                                                 "Renew now? Your saved payment method will be charged for a fresh period.")))
     if btns:
+        if is_paid and not pending_cancel:
+            children.append(ui.Text("You can cancel your subscription at any time without penalty — it remains fully active until the end of the current billing cycle."))
         children.append(ui.Stack(direction="h", gap=1, children=btns))
     return [ui.Card(
         title="Plan & access",
