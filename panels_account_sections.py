@@ -133,7 +133,9 @@ async def build_history_section(ctx):
     items = []
     for p in pays:
         amt = f"${(p.amount_cents or 0) / 100:,.2f}"
-        sub = f"{(p.type or "payment").title()} · {p.status} · {(p.created_at or "")[:10]}"
+        p_type = (p.type or "payment").title()
+        p_date = (p.created_at or "")[:10]
+        sub = f"{p_type} · {p.status} · {p_date}"
         on_click = ui.Open(url=p.receipt_url) if p.receipt_url else None
         items.append(ui.ListItem(id=p.payment_intent_id or amt, title=amt, subtitle=sub, on_click=on_click))
     return [ui.Card(
