@@ -1,18 +1,10 @@
-"""Billing · Center panel — Account (primary) + Analytics (demoted).
+"""Billing · Center panel — Account (primary) + Invoices + Analytics.
 
-Top-level `section` toggle: "account" (default — subscription, saved cards,
-tokens, payment history, profile) vs "analytics" (the legacy admin pattern:
-tabs for Overview/Transactions/Pricing plus detail sub-views for Transaction
-Detail, Extension Stats, Account Summary). Account sections are built in
-panels_account.py; analytics builders are split into panels_tabs.py /
-panels_views.py for the <300L rule.
-
-IMPORTANT: Every ui.Call("__panel__dashboard", ...) MUST explicitly set ALL
-routing params (section, view, tab, event_id, app_id, period) to prevent stale
-state from frontend param merging (usePanelDiscovery merges, not replaces).
-
-NOTE: DataTable on_row_click passes clicked row as nested `row` dict in params.
-Template syntax ${row.xxx} is NOT supported — read row[key] from kwargs instead.
+Structured for human clarity:
+- Top-level `section` switcher:
+  1. "account" / "overview" (default): 2-column clean layout for Plan, Tokens, Payment Methods, Profile
+  2. "invoices": Payment history, receipts and downloadable invoices
+  3. "analytics": Detailed usage charts, extension breakdowns, LLM costs and activity log
 """
 from __future__ import annotations
 
@@ -34,11 +26,8 @@ import panels_account as pa
 log = logging.getLogger("billing")
 
 
-
-# ─── Right Panel (main router) ────────────────────────────────────────── #
-
 @ext.panel(
-    "dashboard", slot="center", title="Billing", icon="BarChart3",
+    "dashboard", slot="center", title="Billing", icon="Wallet",
     center_overlay=True,  # federal v4.1.8 — chat shifts to 380px right rail
     refresh="on_event:billing.deduct,billing.credit",
 )
@@ -55,11 +44,10 @@ async def billing_dashboard(
     app_id: str = "",
     **kwargs,
 ):
-    """Center panel: Account (primary) + Analytics (toggle) — tabs + detail sub-views."""
+    """Center panel: clean 2-column Overview, dedicated Invoices tab, and Detailed Analytics."""
     uid = _user_id(ctx)
 
     # DataTable on_row_click passes clicked row as nested dict in kwargs.
-    # Extract event_id/app_id from row if not provided directly.
     row_data = kwargs.get("row")
     if isinstance(row_data, dict):
         if not event_id:
@@ -68,11 +56,14 @@ async def billing_dashboard(
             app_id = str(row_data.get("app_id", ""))
 
     try:
-        # ── Top-level section switch: Account (default) vs Analytics ──
+        # Normalize section name: "account" and "overview" are equivalent
+        current_section = "account" if section in ("account", "overview", "") else section
+
+        # ── Top Navigation Bar ──
         section_bar = ui.Stack(direction="h", gap=1, children=[
             ui.Button(
-                "My Plan & Wallet", icon="Wallet", size="sm",
-                variant="primary" if section == "account" else "ghost",
+                "Overview & Plan", icon="LayoutDashboard", size="sm",
+                variant="primary" if current_section == "account" else "ghost",
                 on_click=ui.Call(
                     "__panel__dashboard", section="account", tab="overview",
                     period=period, view="", event_id="", app_id="",
@@ -80,8 +71,17 @@ async def billing_dashboard(
                 ),
             ),
             ui.Button(
+                "Invoices & Receipts", icon="Receipt", size="sm",
+                variant="primary" if current_section == "invoices" else "ghost",
+                on_click=ui.Call(
+                    "__panel__dashboard", section="invoices", tab="overview",
+                    period=period, view="", event_id="", app_id="",
+                    filter_app="", filter_type="", offset=0,
+                ),
+            ),
+            ui.Button(
                 "Detailed Analytics", icon="BarChart3", size="sm",
-                variant="primary" if section == "analytics" else "ghost",
+                variant="primary" if current_section == "analytics" else "ghost",
                 on_click=ui.Call(
                     "__panel__dashboard", section="analytics", tab="overview",
                     period=period, view="", event_id="", app_id="",
@@ -90,17 +90,37 @@ async def billing_dashboard(
             ),
         ], sticky=True)
 
-        if section == "account":
-            sections = []
-            sections += await pa.build_subscription_section(ctx)
-            sections += await pa.build_payment_methods_section(ctx)
-            sections += await pa.build_tokens_section(ctx)
-            sections += await pa.build_history_section(ctx)
-            sections += await pa.build_profile_section(ctx)
-            return ui.Stack(direction="v", gap=3, children=[section_bar, *sections])
+        # ── Section 1: Overview & Plan (Clean 2-Column Grid) ──
+        if current_section == "account":
+            sub_sections = await pa.build_subscription_section(ctx)
+            token_sections = await pa.build_tokens_section(ctx)
+            pm_sections = await pa.build_payment_methods_section(ctx)
+            prof_sections = await pa.build_profile_section(ctx)
 
-        # ───── Analytics (existing behavior, unchanged below) ─────
-        # Detail sub-views (triggered by clicks)
+            # Row 1: Plan & Subscription (Col 1) + Credits & Top-Up (Col 2)
+            grid_row1 = ui.Grid(columns=2, gap=3, children=[*sub_sections, *token_sections])
+
+            # Row 2: Payment Methods (Col 1) + Billing Profile (Col 2)
+            grid_row2 = ui.Grid(columns=2, gap=3, children=[*pm_sections, *prof_sections])
+
+            return ui.Stack(
+                direction="v",
+                gap=3,
+                children=[section_bar, grid_row1, grid_row2],
+                className="p-3 max-w-5xl mx-auto"
+            )
+
+        # ── Section 2: Invoices & Receipts Tab ──
+        if current_section == "invoices":
+            hist_sections = await pa.build_history_section(ctx)
+            return ui.Stack(
+                direction="v",
+                gap=3,
+                children=[section_bar, *hist_sections],
+                className="p-3 max-w-4xl mx-auto"
+            )
+
+        # ── Section 3: Detailed Analytics Tab ──
         tz = await get_user_timezone(ctx)
 
         if view == "transaction" and event_id:
@@ -110,13 +130,13 @@ async def billing_dashboard(
         if view == "account":
             return await _build_account_summary(ctx, period)
 
-        # Tab bar — each button explicitly resets ALL routing params
+        # Analytics Sub-tabs
         tab_buttons = []
         for tid, label, icon in [
-            ("overview", "Overview", "BarChart3"),
-            ("transactions", "Activity", "ArrowRightLeft"),
+            ("overview", "Usage Overview", "BarChart3"),
+            ("transactions", "Activity Log", "ArrowRightLeft"),
             ("llm_costs", "LLM Costs", "Cpu"),
-            ("pricing", "Pricing", "Tag"),
+            ("pricing", "Pricing Table", "Tag"),
         ]:
             tab_buttons.append(ui.Button(
                 label, icon=icon, size="sm",
@@ -128,19 +148,9 @@ async def billing_dashboard(
                     filter_app="", filter_type="", offset=0,
                 ),
             ))
-        # Account tab (goes to view, not tab)
-        tab_buttons.append(ui.Button(
-            "Account", icon="User", size="sm", variant="ghost",
-            on_click=ui.Call(
-                "__panel__dashboard",
-                section="analytics", view="account", period=period,
-                tab="", event_id="", app_id="",
-                filter_app="", filter_type="", offset=0,
-            ),
-        ))
+
         tab_bar = ui.Stack(direction="h", gap=1, children=tab_buttons, sticky=True)
 
-        # Route to tab builder
         if tab == "transactions":
             content = await _build_transactions(
                 uid, period, filter_app, filter_type, offset, tz=tz,
@@ -152,7 +162,11 @@ async def billing_dashboard(
         else:
             content = await _build_overview(uid, period)
 
-        return ui.Stack(children=[section_bar, tab_bar, content], gap=2)
+        return ui.Stack(
+            children=[section_bar, tab_bar, content],
+            gap=2,
+            className="p-3 max-w-5xl mx-auto"
+        )
 
     except Exception as e:
         log.error("Dashboard error section=%s tab=%s view=%s: %s", section, tab, view, e)

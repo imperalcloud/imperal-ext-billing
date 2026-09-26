@@ -1,141 +1,105 @@
-"""Billing · Left panel — wallet sidebar."""
+"""Billing · Left panel — clean navigation sidebar."""
 from __future__ import annotations
 
 import logging
-
 from imperal_sdk import ui
-
-from app import ext, _user_id, get_wallet
-import queries
+from app import ext, get_wallet
 
 log = logging.getLogger("billing")
 
 
-# ─── Left Panel ───────────────────────────────────────────────────────── #
-
 @ext.panel(
     "sidebar", slot="left", title="Billing", icon="Wallet",
-    default_width=320, min_width=260, max_width=420,
+    default_width=280, min_width=240, max_width=360,
     refresh="on_event:billing.deduct,billing.credit",
 )
-async def billing_sidebar(ctx, period: str = "7d", **kwargs):
-    """Wallet overview, quick stats, alerts, actions, extension breakdown."""
-    uid = _user_id(ctx)
+async def billing_sidebar(ctx, section: str = "account", period: str = "7d", **kwargs):
+    """Clean navigation sidebar — clear, focused, no duplicate clutter."""
     wallet = await get_wallet(ctx)
-    balance = wallet["balance"]
-    plan = wallet["plan"]
-    cap = wallet["cap"]
-    pct = wallet["pct"]
+    balance = wallet.get("balance", 0)
+    plan = wallet.get("plan", "free")
 
-    # Spending stats from DB
-    try:
-        stats = await queries.get_spending_aggregation(uid, period)
-    except Exception as e:
-        log.error("Sidebar stats error: %s", e)
-        stats = {"total_spent": 0, "total_credits": 0, "action_count": 0,
-                 "refund_count": 0, "by_extension": []}
-
-    children = []
-
-    # ── Wallet Card ───────────────────────────────────────────────
-    unlimited = cap == 0
-    if unlimited:
-        balance_color = "green"
-        progress_label = f"{balance:,} / Unlimited"
-        progress_value = 100
-    else:
-        balance_color = "green" if pct > 50 else ("yellow" if pct > 20 else "red")
-        progress_label = f"{balance:,} / {cap:,}"
-        progress_value = min(pct, 100)
-    children.append(ui.Card(
-        title="Credit Balance",
-        content=ui.Stack([
-            ui.Stat(label="Balance", value=f"{balance:,}", color=balance_color),
-            ui.Progress(value=progress_value, label=progress_label),
+    # 1. Compact Header: Clean summary showing active Plan and Balance
+    header_card = ui.Card(
+        title="Billing & Wallet",
+        subtitle=f"{plan.title()} Plan · {balance:,} credits",
+        content=ui.Stack(direction="h", gap=1, children=[
             ui.Badge(plan.title(), color="blue"),
+            ui.Badge(f"{balance:,} credits", color="green"),
         ]),
-    ))
+    )
 
-    # ── Quick Stats ───────────────────────────────────────────────
-    try:
-        today_stats = await queries.get_spending_aggregation(uid, "today")
-        spent_today = today_stats["total_spent"]
-    except Exception:
-        spent_today = 0
+    # 2. Clean Navigation items matching the center panel tabs
+    is_overview = section in ("account", "overview", "")
+    is_invoices = section == "invoices"
+    is_analytics = section == "analytics"
 
-    action_count = stats.get("action_count", 0)
-    refund_count = stats.get("refund_count", 0)
-    net = stats["total_spent"] - stats["total_credits"]
+    nav_items = [
+        ui.Button(
+            "Overview & Plan",
+            icon="LayoutDashboard",
+            size="sm",
+            variant="primary" if is_overview else "ghost",
+            on_click=ui.Call(
+                "__panel__dashboard",
+                section="account", tab="overview", period=period,
+                view="", event_id="", app_id="", filter_app="", filter_type="", offset=0,
+            ),
+        ),
+        ui.Button(
+            "Invoices & Receipts",
+            icon="Receipt",
+            size="sm",
+            variant="primary" if is_invoices else "ghost",
+            on_click=ui.Call(
+                "__panel__dashboard",
+                section="invoices", tab="overview", period=period,
+                view="", event_id="", app_id="", filter_app="", filter_type="", offset=0,
+            ),
+        ),
+        ui.Button(
+            "Detailed Analytics",
+            icon="BarChart3",
+            size="sm",
+            variant="primary" if is_analytics else "ghost",
+            on_click=ui.Call(
+                "__panel__dashboard",
+                section="analytics", tab="overview", period=period,
+                view="", event_id="", app_id="", filter_app="", filter_type="", offset=0,
+            ),
+        ),
+    ]
 
-    children.append(ui.Section(
-        title="Quick Stats",
-        children=[ui.KeyValue(items=[
-            {"key": "Spent today", "value": f"-{spent_today:,} credits"},
-            {"key": f"Spent {period}", "value": f"-{stats['total_spent']:,} credits"},
-            {"key": "Refunded", "value": f"+{stats['total_credits']:,} credits"},
-            {"key": "Net cost", "value": f"-{net:,} credits"},
-            {"key": "Actions", "value": str(action_count)},
-            {"key": "Refunds", "value": str(refund_count)},
-        ], columns=2)],
-    ))
+    nav_section = ui.Section(
+        title="Navigation",
+        children=[ui.Stack(direction="v", gap=1, children=nav_items)],
+    )
 
-    # ── Alerts (conditional) ──────────────────────────────────────
-    if pct <= 20 and cap > 0 and not unlimited:
-        alert_type = "error" if pct <= 5 else "warn"
-        children.append(ui.Alert(
-            message=f"Only {pct}% of credits remaining ({balance:,} / {cap:,})",
-            type=alert_type,
-        ))
-
-    # ── Actions ───────────────────────────────────────────────────
-    children.append(ui.Section(
-        title="Actions",
+    # 3. Quick Actions
+    quick_actions = ui.Section(
+        title="Quick Actions",
         children=[ui.Stack(direction="v", gap=1, children=[
             ui.Button(
-                label="Manage billing", icon="CreditCard", variant="primary",
-                on_click=ui.Call(
-                    "__panel__dashboard",
-                    section="account", tab="overview", period="7d",
-                    view="", event_id="", app_id="",
-                    filter_app="", filter_type="", offset=0,
-                ),
-            ),
-            ui.Button(
-                label="Export CSV", icon="Download", variant="secondary",
+                "Export CSV",
+                icon="Download",
+                size="sm",
+                variant="secondary",
                 on_click=ui.Call("export_csv", period=period),
             ),
         ])],
-    ))
+    )
 
-    # ── Extension Breakdown ───────────────────────────────────────
-    if stats["by_extension"]:
-        ext_items = []
-        for entry in stats["by_extension"]:
-            ext_items.append(ui.ListItem(
-                id=entry["app_id"],
-                title=entry["app_id"],
-                subtitle=f"{entry['pct']}% · {entry['spent']:,} credits",
-                badge=ui.Badge(f"{entry['pct']}%", color="blue"),
-                on_click=ui.Call(
-                    "__panel__dashboard",
-                    section="analytics", view="extension", app_id=entry["app_id"],
-                    period=period, tab="", event_id="",
-                    filter_app="", filter_type="", offset=0,
-                ),
-            ))
-        children.append(ui.Section(
-            title="Extensions",
-            children=[ui.List(items=ext_items)],
-        ))
+    root = ui.Stack(
+        children=[header_card, nav_section, quick_actions],
+        gap=2,
+        className="min-h-full p-2",
+    )
 
-    # Auto-trigger center overlay (Analytics dashboard) on first sidebar mount.
-    # Frontend's isCenterOverlay reads center_overlay=True from unified_config
-    # and routes __panel__dashboard to setCenterOverlay → chat shifts to right.
-    root = ui.Stack(children=children, gap=2, className="min-h-full")
+    # Auto-trigger center overlay on first sidebar mount
+    active_sec = "invoices" if is_invoices else ("analytics" if is_analytics else "account")
     root.props["auto_action"] = ui.Call(
         "__panel__dashboard",
-        section="account", tab="overview", period="7d",
-        view="", event_id="", app_id="",
-        filter_app="", filter_type="", offset=0,
+        section=active_sec, tab="overview", period=period,
+        view="", event_id="", app_id="", filter_app="", filter_type="", offset=0,
     )
     return root
