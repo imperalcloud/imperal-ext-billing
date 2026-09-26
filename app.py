@@ -15,7 +15,7 @@ log = logging.getLogger("billing")
 
 # ─── Extension ────────────────────────────────────────────────────────── #
 
-ext = Extension("billing", version="2.8.0", capabilities=["billing:read", "billing:write"],
+ext = Extension("billing", version="2.9.0", capabilities=["billing:read", "billing:write"],
     system=True,  # Imperal-owned platform app (mirrors admin/marketplace) —
     # first-party, hidden from Marketplace search, auto-installed for every
     # user. Was missing here (same latent gap found+fixed on developer-ext,

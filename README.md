@@ -10,7 +10,7 @@ Imperal-owned extension for [Webbee 🐝](https://docs.imperal.io), the agent of
 | **Current version** | v2.0.0 |
 | **Status** | Production |
 | **License** | Proprietary (Imperal, Inc.) |
-| **SDK** | `imperal-sdk >= 4.1.4` |
+| **SDK** | `imperal-sdk >= 6.0.1` (ICNLI Quantum SDK) |
 
 ## Deploy flow
 
