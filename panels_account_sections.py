@@ -58,7 +58,17 @@ async def build_tokens_section(ctx):
             type="warning"
         ))
         
-    children.append(ui.Text("$1 per 1,000 credits — spent on Webbee actions, AI models and automations."))
+        # Web 3.0 explanation of credits as platform gas
+    credit_badges = ui.Stack(direction="h", gap=1, children=[
+        ui.Badge("Execution Gas", color="green"),
+        ui.Badge("Never Expire", color="blue"),
+        ui.Badge("On-Demand", color="purple"),
+    ])
+    children.append(credit_badges)
+    children.append(ui.Text(
+        "⚡ Credits = gas for Webbee actions, LLMs, and automations. "
+        "Your plan gives a monthly allowance, and extra credits can be bought anytime ($1 per 1,000 credits) to exceed plan limits."
+    ))
     
     # ── Buy Credits Preset Form ──
     _buy_form = ui.Form(
@@ -116,7 +126,7 @@ async def build_tokens_section(ctx):
     
     return [ui.Card(
         title="Credits",
-        subtitle="Usage credits — spent on Webbee actions; top up here.",
+        subtitle="Execution gas & AI tokens · Refilled monthly or purchased on-demand",
         content=ui.Stack(direction="v", gap=2, children=children)
     )]
 

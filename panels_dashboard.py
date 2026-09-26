@@ -106,7 +106,7 @@ async def billing_dashboard(
             return ui.Stack(
                 direction="v",
                 gap=3,
-                children=[section_bar, grid_row1, grid_row2],
+                children=[grid_row1, grid_row2],
                 className="p-3 max-w-5xl mx-auto"
             )
 
@@ -116,7 +116,7 @@ async def billing_dashboard(
             return ui.Stack(
                 direction="v",
                 gap=3,
-                children=[section_bar, *hist_sections],
+                children=[*hist_sections],
                 className="p-3 max-w-4xl mx-auto"
             )
 
@@ -163,7 +163,7 @@ async def billing_dashboard(
             content = await _build_overview(uid, period)
 
         return ui.Stack(
-            children=[section_bar, tab_bar, content],
+            children=[tab_bar, content],
             gap=2,
             className="p-3 max-w-5xl mx-auto"
         )

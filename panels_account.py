@@ -189,9 +189,25 @@ async def build_subscription_section(ctx, catalog=None):
         if is_paid and not pending_cancel:
             children.append(ui.Text("You can cancel your subscription at any time without penalty — it remains fully active until the end of the current billing cycle."))
         children.append(ui.Stack(direction="h", gap=1, children=btns))
+    # Web 3.0 ultra-clear breakdown of Plan vs On-demand Credits
+    info_badges = ui.Stack(direction="h", gap=1, children=[
+        ui.Badge("OS Access Pass", color="blue"),
+        ui.Badge("Auto Credit Refill on Renew", color="purple"),
+        ui.Badge("Zero-lockin", color="gray"),
+    ])
+    
+    plan_explainer = ui.Text(
+        "⚡ Plan = subscription for Cloud OS & panel access. "
+        "Each renewal reloads your full monthly credit allowance. "
+        "Need more power? Top up on-demand credits anytime without upgrading."
+    )
+    
+    children.insert(1, info_badges)
+    children.insert(2, plan_explainer)
+
     return [ui.Card(
         title="Plan & access",
-        subtitle="Your subscription = panel access, features, and your monthly credit allowance + cap.",
+        subtitle="Cloud OS access tier · Monthly credit allowance auto-refilled on renewal",
         content=ui.Stack(direction="v", gap=2, children=children))]
 
 
