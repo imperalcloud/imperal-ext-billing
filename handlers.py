@@ -6,6 +6,7 @@ import io
 
 from pydantic import BaseModel, Field
 
+from imperal_sdk import ui
 from app import chat, ActionResult, _user_id, get_user_usage
 from models import (
     WalletBalance, PlanSubscription, MeterUsage, SpendingReport, CsvExport,
@@ -38,6 +39,27 @@ class ExportCsvParams(BaseModel):
 async def fn_get_balance(ctx, params: EmptyParams) -> ActionResult:
     try:
         info = await ctx.billing.get_balance()
+        bal_num = int(getattr(info, "balance", 0) or 0)
+        cap_num = int(getattr(info, "cap", 0) or 0)
+        plan_name = str(getattr(info, "plan", "") or "Free").capitalize()
+        bal_str = f"{bal_num:,}"
+        cap_str = f"{cap_num:,}" if cap_num > 0 else "Unlimited"
+
+        card = ui.Card(
+            title="Billing & Credits",
+            subtitle=f"Plan: {plan_name}",
+            content=ui.Stack([
+                ui.Row([
+                    ui.Stat(label="Balance", value=bal_str, color="emerald" if bal_num > 10000 else "amber"),
+                    ui.Stat(label="Cap", value=cap_str, color="blue"),
+                ]),
+            ]),
+            footer=ui.Row([
+                ui.Button(label="Add Credits", on_click=ui.Call("buy_tokens")),
+                ui.Button(label="Stripe Portal", on_click=ui.Call("open_billing_portal"), variant="secondary"),
+            ])
+        )
+
         return ActionResult.success(
             data=WalletBalance(
                 balance=info.balance,
@@ -48,6 +70,7 @@ async def fn_get_balance(ctx, params: EmptyParams) -> ActionResult:
                 f"Balance: {info.balance:,} credits on the {info.plan} plan "
                 f"(cap: {info.cap:,})"
             ),
+            ui=card,
         )
     except Exception as e:
         return ActionResult.error(f"Failed to fetch balance: {e}")
