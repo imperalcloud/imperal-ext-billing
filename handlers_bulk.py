@@ -191,6 +191,7 @@ def _receipt(action: str, ok: list[str], failed: list[str], **extra) -> ActionRe
 @chat.function(
     "bulk_remove_payment_methods",
     action_type="destructive",
+    event="billing.bulk_remove_payment_methods",
     effects=["delete:payment_method"],
     data_model=BulkBillingReceipt,
     description=(
